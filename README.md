@@ -1,7 +1,7 @@
 # RELASI AI
 
 ![Java 25](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)
-![Spring Boot planned](https://img.shields.io/badge/Spring%20Boot-planned-brightgreen?logo=springboot&logoColor=white)
+![JDK-only bootstrap](https://img.shields.io/badge/bootstrap-JDK%20only-brightgreen?logo=openjdk&logoColor=white)
 ![Showcase status](https://img.shields.io/badge/status-planning-blue)
 ![Mock mode](https://img.shields.io/badge/run%20mode-offline%20mocks-informational)
 
@@ -9,7 +9,7 @@
 
 RELASI AI is planned as an enterprise CRM demonstration combining customer and case management with AI assistance, knowledge retrieval, and controlled tool use. Its primary showcase mode is designed to run locally without a database, Docker, network access, credentials, or external systems.
 
-> **Project status:** Planning and architecture documentation are in place; the application itself is not implemented yet. There is currently no UI or launch command. The roadmap defines the intended one-command, offline experience.
+> **Project status:** Development step 1 is implemented as a local application shell. CRM and AI workflows are still planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
 
 ## What the showcase will demonstrate
 
@@ -25,7 +25,29 @@ All banking records and payment information are synthetic. The project does not 
 
 ## Quick start
 
-The application is not runnable yet. A one-command start process will be added as part of the implementation. The target is to require only the supported Java runtime and to start the complete showcase offline with deterministic in-memory data.
+Requirements: a JDK 25 installation. No Maven, Node.js, database, Docker, credentials, or network connection is needed for this starter shell.
+
+```sh
+./run.sh
+```
+
+Open [http://127.0.0.1:8080](http://127.0.0.1:8080). The server binds to loopback only. To use another port:
+
+```sh
+RELASI_PORT=8090 ./run.sh
+```
+
+The script compiles the Java sources with the JDK, bundles local resources, and starts the application. Press `Ctrl+C` to stop it. Build output is temporary and ignored by Git.
+
+### Starter endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/v1/health` | Reports local mock runtime status. |
+| `GET /api/v1/demo-users` | Lists the seeded local demo identities. |
+| `GET /api/v1/session` | Returns a selected demo identity and customer scope; pass its ID in the `X-Demo-User` header. |
+
+The demo identity selector is a local development convenience, not production authentication. The initial slice has no customer records or CRM operations yet.
 
 ## Intended mock-mode behavior
 
@@ -54,7 +76,7 @@ The planned release will support these repeatable scenarios using local fixtures
 
 ## Technology direction
 
-The requirements propose Java 25 and Spring Boot for the backend, with a responsive TypeScript-based CRM interface. Implementation choices will prioritize a single-process local run and avoid runtime dependencies beyond the application itself. See the [development plan](docs/DEVELOPMENT_PLAN.md) for decisions that remain open.
+The starter uses Java 25 and the JDK's built-in HTTP server to avoid framework downloads or build tools in the first-run path. The UI is a bundled static page. Future modules should preserve the same single-process, dependency-free run goal; see the [architecture](docs/arc42.md) and [development plan](docs/DEVELOPMENT_PLAN.md).
 
 ## Safety and scope
 

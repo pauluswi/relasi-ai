@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>RELASI AI — Local showcase</title>
+  <style>
+    :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #182333; background: #f3f6fa; }
+    body { margin: 0; }
+    header { background: #102b46; color: white; padding: 1.4rem max(1.5rem, calc((100vw - 980px) / 2)); }
+    header p { margin: .35rem 0 0; color: #c9d7e5; }
+    main { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; }
+    .card { background: white; border: 1px solid #dce4ed; border-radius: 12px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 4px 18px #1a35500b; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 0; font-size: 1.45rem; }
+    h2 { font-size: 1.1rem; }
+    .badge { display: inline-block; border-radius: 99px; padding: .3rem .65rem; color: #17613a; background: #e2f5e9; font-size: .82rem; font-weight: 650; }
+    label { display: block; margin-bottom: .45rem; font-weight: 600; }
+    select, button { font: inherit; border: 1px solid #b9c6d4; border-radius: 7px; padding: .65rem .8rem; background: white; }
+    button { color: white; background: #126b65; border-color: #126b65; cursor: pointer; margin-left: .4rem; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; border-radius: 8px; color: #d8e8f5; background: #142536; }
+    .muted { color: #5b6877; line-height: 1.55; }
+    @media (max-width: 560px) { select, button { width: 100%; margin: .35rem 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>RELASI AI</h1>
+    <p>Mock-first banking CRM showcase</p>
+  </header>
+  <main>
+    <section class="card">
+      <span class="badge" id="health">Checking local runtime…</span>
+      <h2 style="margin-top: 1rem">Development foundation</h2>
+      <p class="muted">This first development step establishes the local application shell, health endpoint, and seeded demo identities. Customer and AI workflows will be added in later milestones.</p>
+      <p class="muted">Everything runs in this process with in-memory configuration. No database, Docker, network service, or credentials are used.</p>
+    </section>
+    <section class="card">
+      <h2>Local demo identity</h2>
+      <label for="demo-user">Choose a seeded user</label>
+      <select id="demo-user" aria-describedby="demo-note"></select>
+      <button id="load-session" type="button">Load session</button>
+      <p class="muted" id="demo-note" style="margin-top: .8rem">Identity selection is a local showcase convenience, not production authentication.</p>
+      <pre id="session">Select a user to inspect the demo role and customer scope.</pre>
+    </section>
+  </main>
+  <script>
+    const health = document.querySelector('#health');
+    const userSelect = document.querySelector('#demo-user');
+    const sessionOutput = document.querySelector('#session');
+
+    async function loadUsers() {
+      const response = await fetch('/api/v1/demo-users');
+      const result = await response.json();
+      for (const user of result.users) {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = `${user.displayName} — ${user.role}`;
+        userSelect.append(option);
+      }
+      await loadSession();
+    }
+
+    async function loadSession() {
+      const response = await fetch('/api/v1/session', {
+        headers: { 'X-Demo-User': userSelect.value }
+      });
+      sessionOutput.textContent = JSON.stringify(await response.json(), null, 2);
+    }
+
+    fetch('/api/v1/health')
+      .then(response => response.json())
+      .then(data => { health.textContent = `Local runtime ${data.status} · ${data.mode} mode`; })
+      .catch(() => { health.textContent = 'Local runtime unavailable'; health.style.color = '#8a1c1c'; });
+
+    document.querySelector('#load-session').addEventListener('click', loadSession);
+    loadUsers().catch(error => { sessionOutput.textContent = `Could not load demo identities: ${error.message}`; });
+  </script>
+</body>
+</html>

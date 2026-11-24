@@ -44,7 +44,7 @@ The default experience should start with one command on a developer machine with
 
 Each milestone leaves the app runnable in mock mode and maintains the no-dependency guarantee.
 
-### M0 — Zero-setup foundation and contracts
+### M0 — Zero-setup foundation and contracts — started
 
 **Work:**
 
@@ -57,6 +57,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 - Choose lexical or deterministic mock-vector retrieval behind a replaceable interface.
 
 **Exit:** A clean checkout builds and starts with one documented command and no database, Docker, network, credentials, or service installation.
+
+**Implemented foundation:** `./run.sh` compiles with JDK 25 and starts a loopback-only JDK HTTP server. It serves a bundled page and exposes health, demo-user, and selected-session endpoints. Demo roles and customer scopes are seeded in process. `RELASI_PORT` is the only runtime setting; 8080 is the default. Maven, Node, database, Docker, and network access are not needed. CRM records and assistant features remain for later milestones.
 
 ### M1 — Customer 360 vertical slice
 
@@ -175,11 +177,12 @@ Prioritize in this order: zero-setup foundation and security; Customer 360/cases
 
 A feature is done when it meets its acceptance criteria, has server-side authorization and validation, audits sensitive operations, uses deterministic synthetic fixtures, has appropriate automated verification, updates relevant documentation, and works offline in the default profile without a database, Docker, or external service.
 
-## 8. Decisions to Close in M0
+## 8. Decisions Closed in M0
 
-1. Supported Java runtime and single-command build/launch mechanism.
-2. UI packaging that avoids a separate runtime toolchain or service.
-3. Demo login and customer-scope representation.
-4. In-process retrieval choice: deterministic mock vectors or lexical scoring.
-5. Reset semantics, including whether reset is available to all demo roles or administrators only.
+1. **Runtime:** JDK 25; `./run.sh` compiles and launches without Maven or dependency downloads.
+2. **UI packaging:** Static HTML served by the same JDK HTTP server process.
+3. **Demo identity:** Seeded local identities selected with `X-Demo-User`; role and customer-scope mapping is in-process. This is explicitly a development convenience, not production authentication.
+4. **Network boundary:** Bind to `127.0.0.1` by default. `RELASI_PORT` configures the port.
+
+Retrieval implementation and reset authorization remain open until their respective milestones.
 

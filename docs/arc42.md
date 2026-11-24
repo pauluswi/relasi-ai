@@ -105,8 +105,8 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    UI[CRM Web UI\nAngular / TypeScript]
-    API[Backend API and application modules\nSpring Boot]
+    UI[Bundled CRM Web UI\nStatic HTML / JavaScript]
+    API[Backend API and application modules\nJDK HTTP server]
     CRM[CRM domain\nCustomer · Contact · Case · Interaction]
     AI[AI orchestration\nAssistant · NLP · RAG]
     MCP[MCP tool boundary]
@@ -125,7 +125,7 @@ flowchart TB
     AI --> DB
 ```
 
-The diagram is logical: these are proposed modules and interfaces, not necessarily separate deployable services. The initial repository does not yet contain these modules.
+The diagram is the target logical structure. The current implementation contains only the local HTTP shell and demo identity directory; CRM, AI, knowledge, and MCP modules remain planned.
 
 ### 5.2 Level 2 — Backend Modules
 
@@ -227,7 +227,7 @@ flowchart LR
     Browser -->|localhost| Frontend
 ```
 
-This is the proposed primary topology, not an existing implementation. It must start with one documented command and must not require Docker, a database, network access, credentials, or external services. If the UI needs a separate development server during development, demo startup should still serve bundled assets from the application process.
+This topology is implemented as the initial shell: the JDK HTTP server serves the bundled page and API from one process. CRM, knowledge, and AI adapters are still planned. The application binds to loopback and starts with `./run.sh`; it does not require Docker, a database, network access, credentials, or external services.
 
 ### 7.2 Environment Notes
 

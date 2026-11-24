@@ -461,16 +461,15 @@ The solution MUST follow:
 ### Backend
 
 - Java 25.
-- Spring Boot.
-- Spring Security.
+- JDK built-in HTTP server for the default zero-dependency showcase runtime.
 - In-memory repositories for the default mock-only profile; database access libraries MUST NOT be required to run it.
 - REST API.
-- Spring AI or an equivalent AI abstraction framework.
+- Provider-neutral AI interfaces with in-process mock implementations; third-party AI frameworks are optional future implementation choices.
 
 ### Frontend
 
-- Angular.
-- TypeScript.
+- Static web assets served by the application process in the default showcase.
+- TypeScript or a UI framework MAY be used if its assets are bundled before runtime and no separate UI service is needed to run the showcase.
 - Responsive enterprise dashboard.
 - CRM-inspired user experience.
 

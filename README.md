@@ -9,11 +9,11 @@
 
 RELASI AI is planned as an enterprise CRM demonstration combining customer and case management with AI assistance, knowledge retrieval, and controlled tool use. Its primary showcase mode is designed to run locally without a database, Docker, network access, credentials, or external systems.
 
-> **Project status:** Development step 1 is implemented as a local application shell. CRM and AI workflows are still planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
+> **Project status:** The local runtime shell and the first Customer 360 slice are implemented. Case workflows and AI/RAG/MCP features remain planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
 
 ## What the showcase will demonstrate
 
-- Customer search and a consolidated Customer 360 profile.
+- Scoped customer search and a consolidated Customer 360 profile with synthetic contacts, products, interactions, and case snapshots.
 - Service cases, assignments, SLA, history, and customer interactions.
 - Deterministic mock AI and NLP for customer service inquiries.
 - Local banking knowledge retrieval with source references and abstention when evidence is missing.
@@ -46,8 +46,10 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `GET /api/v1/health` | Reports local mock runtime status. |
 | `GET /api/v1/demo-users` | Lists the seeded local demo identities. |
 | `GET /api/v1/session` | Returns a selected demo identity and customer scope; pass its ID in the `X-Demo-User` header. |
+| `GET /api/v1/customers?q=...` | Searches customers visible to the selected demo identity; returns summary fields only. |
+| `GET /api/v1/customers/{customerId}` | Returns the scoped Customer 360 profile. Unknown and out-of-scope IDs both return `404`. |
 
-The demo identity selector is a local development convenience, not production authentication. The initial slice has no customer records or CRM operations yet.
+The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; no customer write operations are implemented yet.
 
 ## Intended mock-mode behavior
 

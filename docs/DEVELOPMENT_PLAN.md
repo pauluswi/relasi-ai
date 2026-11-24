@@ -60,7 +60,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Implemented foundation:** `./run.sh` compiles with JDK 25 and starts a loopback-only JDK HTTP server. It serves a bundled page and exposes health, demo-user, and selected-session endpoints. Demo roles and customer scopes are seeded in process. `RELASI_PORT` is the only runtime setting; 8080 is the default. Maven, Node, database, Docker, and network access are not needed. CRM records and assistant features remain for later milestones.
 
-### M1 — Customer 360 vertical slice
+### M1 — Customer 360 vertical slice — started
 
 **Work:**
 
@@ -70,7 +70,9 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 - Enforce role and customer scope on the server; mask sensitive fields in UI and traces.
 - Implement the first provider-neutral CRM contract and a Dynamics-style in-memory adapter.
 
-**Demo/exit:** Start the app, sign in as a seeded user, search a customer, and inspect profile, products, interaction history, and cases. Reset restores the original fixtures.
+**Demo/exit:** Start the app, choose a seeded user, search a customer, and inspect profile, products, interaction history, and cases. Restarting restores the original fixtures; a visible reset control can be added with mutable workflows.
+
+**Implemented slice:** Four deterministic synthetic Customer 360 fixtures are served by a provider-neutral `CrmAdapter` and a Dynamics-style in-memory implementation. Search is limited to each demo user's customer scope and returns summary fields; detail requests apply the same scope and return `404` for unknown or unauthorized IDs. The bundled UI provides identity selection, search, profile, contacts, products, interactions, and case snapshots. Registration, profile updates, status management, reset controls, and broader verification remain outstanding.
 
 ### M2 — Case and interaction operations
 

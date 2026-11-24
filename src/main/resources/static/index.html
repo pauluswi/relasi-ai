@@ -4,78 +4,216 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>RELASI AI — Local showcase</title>
+  <title>RELASI AI — Customer CRM</title>
   <style>
     :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #182333; background: #f3f6fa; }
     body { margin: 0; }
-    header { background: #102b46; color: white; padding: 1.4rem max(1.5rem, calc((100vw - 980px) / 2)); }
-    header p { margin: .35rem 0 0; color: #c9d7e5; }
-    main { max-width: 980px; margin: 2rem auto; padding: 0 1.25rem; }
-    .card { background: white; border: 1px solid #dce4ed; border-radius: 12px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 4px 18px #1a35500b; }
-    h1, h2, p { margin-top: 0; }
-    h1 { margin-bottom: 0; font-size: 1.45rem; }
-    h2 { font-size: 1.1rem; }
-    .badge { display: inline-block; border-radius: 99px; padding: .3rem .65rem; color: #17613a; background: #e2f5e9; font-size: .82rem; font-weight: 650; }
-    label { display: block; margin-bottom: .45rem; font-weight: 600; }
-    select, button { font: inherit; border: 1px solid #b9c6d4; border-radius: 7px; padding: .65rem .8rem; background: white; }
-    button { color: white; background: #126b65; border-color: #126b65; cursor: pointer; margin-left: .4rem; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; border-radius: 8px; color: #d8e8f5; background: #142536; }
-    .muted { color: #5b6877; line-height: 1.55; }
-    @media (max-width: 560px) { select, button { width: 100%; margin: .35rem 0; } }
+    header { background: #102b46; color: white; padding: 1.2rem max(1.5rem, calc((100vw - 1120px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    header p { margin: .3rem 0 0; color: #c9d7e5; }
+    header .brand { margin: 0; font-size: 1.4rem; }
+    main { max-width: 1120px; margin: 1.8rem auto; padding: 0 1.25rem; }
+    .card { background: white; border: 1px solid #dce4ed; border-radius: 12px; padding: 1.25rem; margin: 1rem 0; box-shadow: 0 4px 18px #1a35500b; }
+    h2, h3, p { margin-top: 0; }
+    h2 { font-size: 1.12rem; }
+    h3 { margin-bottom: .7rem; font-size: 1rem; }
+    .badge { display: inline-block; border-radius: 99px; padding: .3rem .65rem; color: #17613a; background: #e2f5e9; font-size: .82rem; font-weight: 650; white-space: nowrap; }
+    .toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, 2fr) auto; align-items: end; gap: .8rem; }
+    label { display: block; margin-bottom: .4rem; font-weight: 600; font-size: .9rem; }
+    select, input, button { width: 100%; box-sizing: border-box; font: inherit; border: 1px solid #b9c6d4; border-radius: 7px; padding: .65rem .75rem; background: white; color: inherit; }
+    button { color: white; background: #126b65; border-color: #126b65; cursor: pointer; font-weight: 600; }
+    button:hover { background: #0d5752; }
+    .customer-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .7rem; }
+    .customer-option { text-align: left; color: #182333; background: #fff; border-color: #dce4ed; }
+    .customer-option[aria-current="true"] { border-color: #126b65; box-shadow: 0 0 0 2px #126b6522; }
+    .customer-option strong, .customer-option span { display: block; }
+    .customer-option span { color: #5b6877; font-size: .84rem; margin-top: .25rem; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .detail-card { border: 1px solid #e1e7ee; border-radius: 9px; padding: 1rem; min-width: 0; }
+    .profile-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+    .profile-heading h2 { margin-bottom: .35rem; }
+    .muted, .empty { color: #5b6877; line-height: 1.5; }
+    dl { display: grid; grid-template-columns: minmax(120px, .8fr) minmax(0, 1.2fr); gap: .5rem .8rem; margin: .8rem 0 0; font-size: .92rem; }
+    dt { color: #5b6877; } dd { margin: 0; overflow-wrap: anywhere; font-weight: 550; }
+    ul { padding-left: 1.15rem; margin: .4rem 0 0; }
+    li { padding: .38rem 0; line-height: 1.4; }
+    li small { color: #5b6877; }
+    .error { color: #982d2d; }
+    [hidden] { display: none !important; }
+    @media (max-width: 700px) {
+      header { align-items: start; flex-direction: column; }
+      .toolbar { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>RELASI AI</h1>
-    <p>Mock-first banking CRM showcase</p>
+    <div><h1 class="brand">RELASI AI</h1><p>Customer relationship workspace · Synthetic demo data</p></div>
+    <span class="badge" id="health">Checking local runtime…</span>
   </header>
   <main>
     <section class="card">
-      <span class="badge" id="health">Checking local runtime…</span>
-      <h2 style="margin-top: 1rem">Development foundation</h2>
-      <p class="muted">This first development step establishes the local application shell, health endpoint, and seeded demo identities. Customer and AI workflows will be added in later milestones.</p>
-      <p class="muted">Everything runs in this process with in-memory configuration. No database, Docker, network service, or credentials are used.</p>
+      <h2>Customer search</h2>
+      <div class="toolbar">
+        <div>
+          <label for="demo-user">Demo identity</label>
+          <select id="demo-user"></select>
+        </div>
+        <div>
+          <label for="search">Name, customer ID, or segment</label>
+          <input id="search" type="search" placeholder="Search authorized customers" autocomplete="off">
+        </div>
+        <button id="search-button" type="button">Search</button>
+      </div>
+      <p class="muted" id="identity-note" style="margin: .8rem 0 0">Local demo identity selector. This is not production authentication.</p>
     </section>
-    <section class="card">
-      <h2>Local demo identity</h2>
-      <label for="demo-user">Choose a seeded user</label>
-      <select id="demo-user" aria-describedby="demo-note"></select>
-      <button id="load-session" type="button">Load session</button>
-      <p class="muted" id="demo-note" style="margin-top: .8rem">Identity selection is a local showcase convenience, not production authentication.</p>
-      <pre id="session">Select a user to inspect the demo role and customer scope.</pre>
+    <section class="card" aria-labelledby="results-title">
+      <h2 id="results-title">Customers in your scope</h2>
+      <div id="customer-list" class="customer-list"><p class="empty">Loading customers…</p></div>
     </section>
+    <section id="customer-detail" class="card" hidden aria-live="polite"></section>
   </main>
   <script>
-    const health = document.querySelector('#health');
+    const healthBadge = document.querySelector('#health');
     const userSelect = document.querySelector('#demo-user');
-    const sessionOutput = document.querySelector('#session');
+    const searchInput = document.querySelector('#search');
+    const customerList = document.querySelector('#customer-list');
+    const detail = document.querySelector('#customer-detail');
+    let selectedCustomerId = '';
+
+    async function api(path) {
+      const response = await fetch(path, { headers: { 'X-Demo-User': userSelect.value } });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || payload.error || `Request failed (${response.status})`);
+      return payload;
+    }
 
     async function loadUsers() {
       const response = await fetch('/api/v1/demo-users');
-      const result = await response.json();
-      for (const user of result.users) {
+      const payload = await response.json();
+      for (const user of payload.users) {
         const option = document.createElement('option');
         option.value = user.id;
-        option.textContent = `${user.displayName} — ${user.role}`;
+        option.textContent = `${user.displayName} · ${user.role.replaceAll('_', ' ')}`;
         userSelect.append(option);
       }
-      await loadSession();
+      await searchCustomers();
     }
 
-    async function loadSession() {
-      const response = await fetch('/api/v1/session', {
-        headers: { 'X-Demo-User': userSelect.value }
-      });
-      sessionOutput.textContent = JSON.stringify(await response.json(), null, 2);
+    async function searchCustomers() {
+      selectedCustomerId = '';
+      detail.hidden = true;
+      customerList.replaceChildren(document.createTextNode('Loading customers…'));
+      try {
+        const query = encodeURIComponent(searchInput.value.trim());
+        const result = await api(`/api/v1/customers?q=${query}`);
+        customerList.replaceChildren();
+        if (result.customers.length === 0) {
+          customerList.append(makeText('p', 'No customers found in this scope.', 'empty'));
+          return;
+        }
+        for (const customer of result.customers) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'customer-option';
+          button.dataset.customerId = customer.id;
+          const name = makeText('strong', customer.fullName);
+          const summary = makeText('span', `${customer.customerNumber} · ${customer.segment.replaceAll('_', ' ')} · ${customer.city}`);
+          button.append(name, summary);
+          button.addEventListener('click', () => loadCustomer(customer.id));
+          customerList.append(button);
+        }
+        const first = customerList.querySelector('button');
+        if (first) await loadCustomer(first.dataset.customerId);
+      } catch (error) {
+        customerList.replaceChildren(makeText('p', error.message, 'error'));
+      }
+    }
+
+    async function loadCustomer(customerId) {
+      try {
+        const data = await api(`/api/v1/customers/${encodeURIComponent(customerId)}`);
+        selectedCustomerId = customerId;
+        document.querySelectorAll('.customer-option').forEach(button => {
+          button.setAttribute('aria-current', String(button.dataset.customerId === customerId));
+        });
+        renderCustomer(data);
+      } catch (error) {
+        detail.hidden = false;
+        detail.replaceChildren(makeText('p', error.message, 'error'));
+      }
+    }
+
+    function renderCustomer(data) {
+      detail.replaceChildren();
+      detail.hidden = false;
+      const customer = data.customer;
+      const heading = document.createElement('div');
+      heading.className = 'profile-heading';
+      const titleBlock = document.createElement('div');
+      titleBlock.append(makeText('h2', customer.fullName), makeText('p', `${customer.customerNumber} · ${customer.segment.replaceAll('_', ' ')} · ${customer.city}`, 'muted'));
+      heading.append(titleBlock, makeText('span', customer.status, 'badge'));
+      detail.append(heading);
+
+      const grid = document.createElement('div');
+      grid.className = 'detail-grid';
+      grid.append(
+        profileCard(customer),
+        listCard('Contacts', data.contacts, item => `${item.fullName} · ${item.relationship.replaceAll('_', ' ')} · ${item.preferredChannel.replaceAll('_', ' ')}`),
+        listCard('Products', data.products, item => `${item.displayName} · ${item.status} · ${item.maskedReference} · ${formatBalance(item)}`),
+        listCard('Recent interactions', data.interactions, item => `${item.occurredAt} · ${item.channel.replaceAll('_', ' ')} — ${item.summary} (${item.outcome})`),
+        listCard('Service cases', data.cases, item => `${item.reference} · ${item.subject} · ${item.status} · ${item.priority}`)
+      );
+      detail.append(grid);
+    }
+
+    function profileCard(customer) {
+      const card = makeText('section', '', 'detail-card');
+      card.append(makeText('h3', 'Customer profile'));
+      const fields = [
+        ['Email', customer.email], ['Mobile', customer.mobile], ['Date of birth', customer.dateOfBirth],
+        ['Preferred channel', customer.preferredChannel.replaceAll('_', ' ')], ['Simulated risk', customer.riskIndicator]
+      ];
+      const list = document.createElement('dl');
+      for (const [label, value] of fields) list.append(makeText('dt', label), makeText('dd', value));
+      card.append(list);
+      return card;
+    }
+
+    function listCard(title, items, describe) {
+      const card = makeText('section', '', 'detail-card');
+      card.append(makeText('h3', title));
+      if (!items.length) {
+        card.append(makeText('p', 'No records in the demo fixture.', 'empty'));
+        return card;
+      }
+      const list = document.createElement('ul');
+      for (const item of items) list.append(makeText('li', describe(item)));
+      card.append(list);
+      return card;
+    }
+
+    function formatBalance(product) {
+      if (product.availableBalance === 0) return '—';
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: product.currency, maximumFractionDigits: 0 }).format(product.availableBalance);
+    }
+
+    function makeText(tag, text, className = '') {
+      const element = document.createElement(tag);
+      element.textContent = text;
+      if (className) element.className = className;
+      return element;
     }
 
     fetch('/api/v1/health')
       .then(response => response.json())
-      .then(data => { health.textContent = `Local runtime ${data.status} · ${data.mode} mode`; })
-      .catch(() => { health.textContent = 'Local runtime unavailable'; health.style.color = '#8a1c1c'; });
+      .then(data => { healthBadge.textContent = `Local runtime ${data.status} · ${data.mode} mode`; })
+      .catch(() => { healthBadge.textContent = 'Local runtime unavailable'; });
 
-    document.querySelector('#load-session').addEventListener('click', loadSession);
-    loadUsers().catch(error => { sessionOutput.textContent = `Could not load demo identities: ${error.message}`; });
+    userSelect.addEventListener('change', searchCustomers);
+    document.querySelector('#search-button').addEventListener('click', searchCustomers);
+    searchInput.addEventListener('keydown', event => { if (event.key === 'Enter') searchCustomers(); });
+    loadUsers().catch(error => { customerList.replaceChildren(makeText('p', error.message, 'error')); });
   </script>
 </body>
 </html>

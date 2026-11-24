@@ -9,12 +9,12 @@
 
 RELASI AI is planned as an enterprise CRM demonstration combining customer and case management with AI assistance, knowledge retrieval, and controlled tool use. Its primary showcase mode is designed to run locally without a database, Docker, network access, credentials, or external systems.
 
-> **Project status:** The local runtime shell and the first Customer 360 slice are implemented. Case workflows and AI/RAG/MCP features remain planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
+> **Project status:** The local runtime, scoped Customer 360, and initial case/interaction workflows are implemented. AI/RAG/MCP features remain planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
 
 ## What the showcase will demonstrate
 
 - Scoped customer search and a consolidated Customer 360 profile with synthetic contacts, products, interactions, and case snapshots.
-- Service cases, assignments, SLA, history, and customer interactions.
+- Service cases, assignments, SLA escalation, history, and customer interactions.
 - Deterministic mock AI and NLP for customer service inquiries.
 - Local banking knowledge retrieval with source references and abstention when evidence is missing.
 - MCP-compatible tool discovery and execution through an in-process registry.
@@ -48,8 +48,17 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `GET /api/v1/session` | Returns a selected demo identity and customer scope; pass its ID in the `X-Demo-User` header. |
 | `GET /api/v1/customers?q=...` | Searches customers visible to the selected demo identity; returns summary fields only. |
 | `GET /api/v1/customers/{customerId}` | Returns the scoped Customer 360 profile. Unknown and out-of-scope IDs both return `404`. |
+| `GET /api/v1/cases?customerId=...&status=...` | Lists cases inside the selected user's customer scope. |
+| `GET /api/v1/cases/{caseReference}` | Returns case detail and event history within the user's scope. |
+| `POST /api/v1/cases` | Creates a case for an in-scope customer (customer service officer, supervisor, or administrator). |
+| `POST /api/v1/cases/{caseReference}/status` | Changes case status; resolving requires a resolution note. |
+| `POST /api/v1/cases/{caseReference}/assignment` | Assigns an active case to a seeded service officer (supervisor or administrator). |
+| `POST /api/v1/cases/{caseReference}/escalate` | Escalates an overdue active case (supervisor or administrator). |
+| `GET /api/v1/interactions?customerId=...` | Lists interactions in the selected user's scope. |
+| `POST /api/v1/interactions` | Records an interaction for an in-scope customer, optionally linked to that customer's case. |
+| `GET /api/v1/audit` | Lists in-memory audit events (supervisor or administrator). |
 
-The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; no customer write operations are implemented yet.
+Write endpoints accept `application/x-www-form-urlencoded` fields. The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; customer profile changes are not implemented.
 
 ## Intended mock-mode behavior
 

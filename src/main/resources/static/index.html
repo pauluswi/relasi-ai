@@ -29,6 +29,17 @@
     .customer-option span { color: #5b6877; font-size: .84rem; margin-top: .25rem; }
     .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
     .detail-card { border: 1px solid #e1e7ee; border-radius: 9px; padding: 1rem; min-width: 0; }
+    .case-record { border-top: 1px solid #e1e7ee; padding: .9rem 0; }
+    .case-record:first-of-type { border-top: 0; padding-top: 0; }
+    .case-record h4 { margin: 0 0 .35rem; }
+    .case-meta { font-size: .84rem; color: #5b6877; margin: .25rem 0; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+    .form-grid .wide { grid-column: 1 / -1; }
+    .form-grid textarea { width: 100%; min-height: 76px; box-sizing: border-box; resize: vertical; font: inherit; border: 1px solid #b9c6d4; border-radius: 7px; padding: .65rem .75rem; }
+    .form-actions { display: flex; gap: .5rem; align-items: center; margin-top: .7rem; }
+    .form-actions button { width: auto; }
+    .inline-form { border-top: 1px solid #e1e7ee; padding-top: .65rem; margin-top: .6rem; }
+    .form-message { margin: .5rem 0 0; }
     .profile-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
     .profile-heading h2 { margin-bottom: .35rem; }
     .muted, .empty { color: #5b6877; line-height: 1.5; }
@@ -79,10 +90,13 @@
     const searchInput = document.querySelector('#search');
     const customerList = document.querySelector('#customer-list');
     const detail = document.querySelector('#customer-detail');
+    const demoRoles = {};
     let selectedCustomerId = '';
 
-    async function api(path) {
-      const response = await fetch(path, { headers: { 'X-Demo-User': userSelect.value } });
+    async function api(path, options = {}) {
+      const headers = { 'X-Demo-User': userSelect.value, ...(options.headers || {}) };
+      if (options.body instanceof URLSearchParams) headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      const response = await fetch(path, { ...options, headers });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.message || payload.error || `Request failed (${response.status})`);
       return payload;
@@ -91,6 +105,7 @@
     async function loadUsers() {
       const response = await fetch('/api/v1/demo-users');
       const payload = await response.json();
+      for (const user of payload.users) demoRoles[user.id] = user.role;
       for (const user of payload.users) {
         const option = document.createElement('option');
         option.value = user.id;
@@ -161,8 +176,9 @@
         profileCard(customer),
         listCard('Contacts', data.contacts, item => `${item.fullName} · ${item.relationship.replaceAll('_', ' ')} · ${item.preferredChannel.replaceAll('_', ' ')}`),
         listCard('Products', data.products, item => `${item.displayName} · ${item.status} · ${item.maskedReference} · ${formatBalance(item)}`),
-        listCard('Recent interactions', data.interactions, item => `${item.occurredAt} · ${item.channel.replaceAll('_', ' ')} — ${item.summary} (${item.outcome})`),
-        listCard('Service cases', data.cases, item => `${item.reference} · ${item.subject} · ${item.status} · ${item.priority}`)
+        listCard('Recent interactions', data.interactions, item => `${formatDate(item.occurredAt)} · ${item.channel.replaceAll('_', ' ')} · ${item.category} — ${item.summary} (${item.outcome})`),
+        caseManagementCard(customer, data.cases),
+        interactionFormCard(customer, data.cases)
       );
       detail.append(grid);
     }
@@ -191,6 +207,224 @@
       for (const item of items) list.append(makeText('li', describe(item)));
       card.append(list);
       return card;
+    }
+
+    function caseManagementCard(customer, cases) {
+      const card = makeText('section', '', 'detail-card');
+      card.append(makeText('h3', `Service cases (${cases.length})`));
+      const role = currentRole();
+      const canWrite = ['CUSTOMER_SERVICE_OFFICER', 'CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(role);
+      const canManage = ['CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(role);
+      if (!cases.length) card.append(makeText('p', 'No service cases for this customer.', 'empty'));
+      for (const serviceCase of cases) card.append(caseRecord(serviceCase, canWrite, canManage));
+      if (canWrite) card.append(caseCreateForm(customer));
+      return card;
+    }
+
+    function caseRecord(serviceCase, canWrite, canManage) {
+      const record = makeText('article', '', 'case-record');
+      record.append(makeText('h4', `${serviceCase.reference} · ${serviceCase.subject}`));
+      record.append(makeText('p', `${serviceCase.category.replaceAll('_', ' ')} · ${serviceCase.status.replaceAll('_', ' ')} · ${serviceCase.priority} priority`, 'case-meta'));
+      record.append(makeText('p', serviceCase.description, 'muted'));
+      record.append(makeText('p', `Assigned to ${serviceCase.assignedTo || 'Unassigned'} · SLA ${formatDate(serviceCase.slaDeadline)}${serviceCase.escalated ? ' · Escalated' : ''}${isOverdue(serviceCase) ? ' · OVERDUE' : ''}`, 'case-meta'));
+      if (serviceCase.resolution) record.append(makeText('p', `Resolution: ${serviceCase.resolution}`, 'muted'));
+      const history = document.createElement('details');
+      history.append(makeText('summary', `History (${serviceCase.history.length} events)`));
+      const events = document.createElement('ul');
+      for (const event of serviceCase.history) events.append(makeText('li', `${formatDate(event.occurredAt)} · ${event.action.replaceAll('_', ' ')} · ${event.details}`));
+      history.append(events);
+      record.append(history);
+
+      if (canWrite && serviceCase.status !== 'CLOSED') record.append(statusForm(serviceCase));
+      if (canManage && !['RESOLVED', 'CLOSED'].includes(serviceCase.status)) {
+        const assign = document.createElement('form');
+        assign.className = 'inline-form form-actions';
+        const assignment = document.createElement('select');
+        assignment.name = 'assigneeId';
+        assignment.append(option('service-officer', 'Service Officer'));
+        const assignButton = makeText('button', 'Assign case');
+        assignButton.type = 'submit';
+        assign.append(assignment, assignButton);
+        assign.addEventListener('submit', event => submitForm(event, `/api/v1/cases/${encodeURIComponent(serviceCase.reference)}/assignment`, 'Case assigned.'));
+        record.append(assign);
+      }
+      if (canManage && isOverdue(serviceCase)) {
+        const escalate = makeText('button', 'Escalate overdue case');
+        escalate.type = 'button';
+        escalate.addEventListener('click', async () => {
+          try {
+            await api(`/api/v1/cases/${encodeURIComponent(serviceCase.reference)}/escalate`, { method: 'POST', body: new URLSearchParams() });
+            await loadCustomer(selectedCustomerId);
+          } catch (error) { showMessage(error.message, true); }
+        });
+        record.append(escalate);
+      }
+      return record;
+    }
+
+    function statusForm(serviceCase) {
+      const form = document.createElement('form');
+      form.className = 'inline-form form-grid';
+      const transitions = {
+        OPEN: ['IN_PROGRESS', 'WAITING_FOR_CUSTOMER', 'RESOLVED'],
+        IN_PROGRESS: ['WAITING_FOR_CUSTOMER', 'RESOLVED'],
+        WAITING_FOR_CUSTOMER: ['IN_PROGRESS', 'RESOLVED'],
+        RESOLVED: ['CLOSED', 'IN_PROGRESS']
+      };
+      const statusField = labeledSelect('Change status', 'status', transitions[serviceCase.status] || []);
+      const resolutionField = labeledTextarea('Resolution note (required to resolve)', 'resolution', 2000);
+      const resolutionInput = resolutionField.querySelector('textarea');
+      resolutionInput.required = false;
+      statusField.querySelector('select').addEventListener('change', event => {
+        resolutionInput.required = event.target.value === 'RESOLVED';
+      });
+      resolutionField.className = 'wide';
+      const actions = makeText('div', '', 'form-actions wide');
+      const save = makeText('button', 'Update case');
+      save.type = 'submit';
+      actions.append(save);
+      form.append(statusField, resolutionField, actions);
+      form.addEventListener('submit', event => submitForm(event, `/api/v1/cases/${encodeURIComponent(serviceCase.reference)}/status`, 'Case updated.'));
+      return form;
+    }
+
+    function caseCreateForm(customer) {
+      const form = document.createElement('form');
+      form.className = 'inline-form form-grid';
+      form.append(makeText('h4', 'Create service case'));
+      const categoryField = labeledSelect('Category', 'category', [
+        'PAYMENT_COMPLAINT', 'ACCOUNT_INQUIRY', 'LOAN_INQUIRY', 'CARD_ISSUE',
+        'MOBILE_BANKING_ISSUE', 'TRANSACTION_DISPUTE', 'GENERAL_BANKING_INQUIRY'
+      ]);
+      const priorityField = labeledSelect('Priority', 'priority', ['NORMAL', 'HIGH', 'LOW']);
+      const subjectField = labeledInput('Subject', 'subject', 120);
+      const descriptionField = labeledTextarea('Description', 'description', 2000);
+      subjectField.className = 'wide';
+      descriptionField.className = 'wide';
+      const actions = makeText('div', '', 'form-actions wide');
+      const button = makeText('button', 'Create case');
+      button.type = 'submit';
+      actions.append(button);
+      form.append(categoryField, priorityField, subjectField, descriptionField, actions);
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        const values = Object.fromEntries(new FormData(form));
+        values.customerId = customer.id;
+        sendForm('/api/v1/cases', values, 'Case created.');
+      });
+      return form;
+    }
+
+    function interactionFormCard(customer, cases) {
+      const card = makeText('section', '', 'detail-card');
+      card.append(makeText('h3', 'Record interaction'));
+      if (!['CUSTOMER_SERVICE_OFFICER', 'CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(currentRole())) {
+        card.append(makeText('p', 'Interaction recording is available to customer service staff.', 'empty'));
+        return card;
+      }
+      const form = document.createElement('form');
+      form.className = 'form-grid';
+      const channel = labeledSelect('Channel', 'channel', ['WEB_CHAT', 'EMAIL', 'TELEPHONE', 'BRANCH', 'MOBILE_BANKING']);
+      const category = labeledSelect('Category', 'category', ['PAYMENT', 'ACCOUNT', 'LOAN', 'CARD', 'MOBILE_BANKING', 'TRANSACTION', 'GENERAL']);
+      const summary = labeledTextarea('Interaction content', 'summary', 2000);
+      const outcome = labeledInput('Outcome', 'outcome', 500);
+      const related = labeledSelect('Related case (optional)', 'relatedCaseReference', ['']);
+      related.querySelector('option').textContent = 'No related case';
+      for (const serviceCase of cases) related.querySelector('select').append(option(serviceCase.reference, `${serviceCase.reference} · ${serviceCase.status}`));
+      summary.className = 'wide';
+      outcome.className = 'wide';
+      related.className = 'wide';
+      const actions = makeText('div', '', 'form-actions wide');
+      const button = makeText('button', 'Save interaction');
+      button.type = 'submit';
+      actions.append(button);
+      form.append(channel, category, summary, outcome, related, actions);
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        const values = Object.fromEntries(new FormData(form));
+        values.customerId = customer.id;
+        sendForm('/api/v1/interactions', values, 'Interaction recorded.');
+      });
+      card.append(form);
+      return card;
+    }
+
+    async function submitForm(event, path, successMessage) {
+      event.preventDefault();
+      await sendForm(path, Object.fromEntries(new FormData(event.currentTarget)), successMessage);
+    }
+
+    async function sendForm(path, values, successMessage) {
+      try {
+        await api(path, { method: 'POST', body: new URLSearchParams(values) });
+        await loadCustomer(selectedCustomerId);
+        showMessage(successMessage, false);
+      } catch (error) { showMessage(error.message, true); }
+    }
+
+    function showMessage(message, isError) {
+      let status = detail.querySelector('[data-feedback]');
+      if (!status) {
+        status = makeText('p', '', 'form-message');
+        status.dataset.feedback = 'true';
+        status.setAttribute('role', 'status');
+        detail.prepend(status);
+      }
+      status.textContent = message;
+      status.className = isError ? 'form-message error' : 'form-message muted';
+    }
+
+    function currentRole() {
+      return demoRoles[userSelect.value] || '';
+    }
+
+    function option(value, label) {
+      const element = document.createElement('option');
+      element.value = value;
+      element.textContent = label;
+      return element;
+    }
+
+    function labeledSelect(labelText, name, values) {
+      const wrapper = document.createElement('div');
+      const label = makeText('label', labelText);
+      const select = document.createElement('select');
+      select.name = name;
+      for (const value of values) select.append(option(value, value ? value.replaceAll('_', ' ') : ''));
+      wrapper.append(label, select);
+      return wrapper;
+    }
+
+    function labeledInput(labelText, name, maxLength) {
+      const wrapper = document.createElement('div');
+      const label = makeText('label', labelText);
+      const input = document.createElement('input');
+      input.name = name;
+      input.maxLength = maxLength;
+      input.required = true;
+      wrapper.append(label, input);
+      return wrapper;
+    }
+
+    function labeledTextarea(labelText, name, maxLength) {
+      const wrapper = document.createElement('div');
+      const label = makeText('label', labelText);
+      const textarea = document.createElement('textarea');
+      textarea.name = name;
+      textarea.maxLength = maxLength;
+      textarea.required = true;
+      wrapper.append(label, textarea);
+      return wrapper;
+    }
+
+    function formatDate(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.valueOf()) ? value : date.toLocaleString();
+    }
+
+    function isOverdue(serviceCase) {
+      return ['OPEN', 'IN_PROGRESS', 'WAITING_FOR_CUSTOMER'].includes(serviceCase.status)
+        && !serviceCase.escalated && new Date(serviceCase.slaDeadline).getTime() < Date.now();
     }
 
     function formatBalance(product) {

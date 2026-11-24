@@ -1,6 +1,7 @@
 package com.pswied.core.crm;
 
 import com.pswied.core.crm.CrmModels.Contact;
+import com.pswied.core.crm.CrmModels.CaseEvent;
 import com.pswied.core.crm.CrmModels.Customer;
 import com.pswied.core.crm.CrmModels.Customer360;
 import com.pswied.core.crm.CrmModels.CustomerSummary;
@@ -78,16 +79,37 @@ public final class CrmJson {
                 "availableBalance", product.availableBalance());
     }
 
-    private static Map<String, Object> interaction(Interaction interaction) {
-        return object("id", interaction.id(), "channel", interaction.channel(), "occurredAt", interaction.occurredAt(),
-                "summary", interaction.summary(), "outcome", interaction.outcome(),
+    public static Map<String, Object> interaction(Interaction interaction) {
+        return object("id", interaction.id(), "customerId", interaction.customerId(), "channel", interaction.channel(),
+                "category", interaction.category(), "occurredAt", interaction.occurredAt(), "summary", interaction.summary(), "outcome", interaction.outcome(),
                 "relatedCaseReference", interaction.relatedCaseReference());
     }
 
-    private static Map<String, Object> serviceCase(ServiceCase serviceCase) {
-        return object("reference", serviceCase.reference(), "category", serviceCase.category(),
-                "subject", serviceCase.subject(), "status", serviceCase.status(), "priority", serviceCase.priority(),
-                "updatedAt", serviceCase.updatedAt());
+    public static Map<String, Object> serviceCase(ServiceCase serviceCase) {
+        return object("reference", serviceCase.reference(), "customerId", serviceCase.customerId(),
+                "category", serviceCase.category(), "subject", serviceCase.subject(), "description", serviceCase.description(),
+                "status", serviceCase.status(), "priority", serviceCase.priority(), "assignedTo", serviceCase.assignedTo(),
+                "createdAt", serviceCase.createdAt(), "updatedAt", serviceCase.updatedAt(), "slaDeadline", serviceCase.slaDeadline(),
+                "resolution", serviceCase.resolution(), "escalated", serviceCase.escalated(),
+                "history", serviceCase.history().stream().map(CrmJson::caseEvent).toList());
+    }
+
+    public static Map<String, Object> caseSummary(ServiceCase serviceCase) {
+        return object("reference", serviceCase.reference(), "customerId", serviceCase.customerId(),
+                "category", serviceCase.category(), "subject", serviceCase.subject(), "status", serviceCase.status(),
+                "priority", serviceCase.priority(), "assignedTo", serviceCase.assignedTo(),
+                "createdAt", serviceCase.createdAt(), "updatedAt", serviceCase.updatedAt(),
+                "slaDeadline", serviceCase.slaDeadline(), "escalated", serviceCase.escalated());
+    }
+
+    public static Map<String, Object> auditEvent(AuditService.AuditEvent event) {
+        return object("occurredAt", event.occurredAt(), "actorId", event.actorId(), "action", event.action(),
+                "target", event.target(), "outcome", event.outcome());
+    }
+
+    private static Map<String, Object> caseEvent(CaseEvent event) {
+        return object("occurredAt", event.occurredAt(), "actorId", event.actorId(),
+                "action", event.action(), "details", event.details());
     }
 
     private static Map<String, Object> object(Object... values) {

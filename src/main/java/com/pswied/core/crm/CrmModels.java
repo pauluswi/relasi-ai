@@ -50,7 +50,9 @@ public final class CrmModels {
 
     public record Interaction(
             String id,
+            String customerId,
             String channel,
+            String category,
             String occurredAt,
             String summary,
             String outcome,
@@ -59,11 +61,25 @@ public final class CrmModels {
 
     public record ServiceCase(
             String reference,
+            String customerId,
             String category,
             String subject,
+            String description,
             String status,
             String priority,
-            String updatedAt) {
+            String assignedTo,
+            String createdAt,
+            String updatedAt,
+            String slaDeadline,
+            String resolution,
+            boolean escalated,
+            List<CaseEvent> history) {
+        public ServiceCase {
+            history = List.copyOf(history);
+        }
+    }
+
+    public record CaseEvent(String occurredAt, String actorId, String action, String details) {
     }
 
     public record Customer360(

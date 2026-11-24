@@ -74,7 +74,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Implemented slice:** Four deterministic synthetic Customer 360 fixtures are served by a provider-neutral `CrmAdapter` and a Dynamics-style in-memory implementation. Search is limited to each demo user's customer scope and returns summary fields; detail requests apply the same scope and return `404` for unknown or unauthorized IDs. The bundled UI provides identity selection, search, profile, contacts, products, interactions, and case snapshots. Registration, profile updates, status management, reset controls, and broader verification remain outstanding.
 
-### M2 — Case and interaction operations
+### M2 — Case and interaction operations — started
 
 **Work:**
 
@@ -84,6 +84,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 - Audit case writes and validate lifecycle transitions.
 
 **Demo/exit:** A service officer reviews a customer, creates and assigns a case, updates status, and sees the case timeline and related interactions.
+
+**Implemented slice:** In-memory case and interaction services provide seeded history, validated creation, status transitions, assignment, overdue SLA escalation, customer-linked interaction recording, and append-only event history. Writes produce in-memory audit events; supervisor/administrator access is required for assignment, escalation, and audit viewing. Customer service officers can create cases, change status, and record interactions. Every operation checks the user's customer scope. The UI exposes these workflows on the Customer 360 page. Queue filtering and broader verification remain to be completed.
 
 ### M3 — Mock AI and NLP
 

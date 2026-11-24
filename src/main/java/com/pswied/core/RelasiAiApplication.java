@@ -4,13 +4,20 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import com.pswied.core.crm.CrmAdapter;
 import com.pswied.core.crm.CrmJson;
+import com.pswied.core.crm.AuditService;
+import com.pswied.core.crm.CaseService;
+import com.pswied.core.crm.CrmModels.Customer360;
 import com.pswied.core.crm.DynamicsStyleMockCrmAdapter;
+import com.pswied.core.crm.InteractionService;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.net.URLDecoder;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,6 +26,9 @@ import java.util.concurrent.Executors;
 public final class RelasiAiApplication {
     private static final String API_PREFIX = "/api/v1";
     private static final CrmAdapter CRM = new DynamicsStyleMockCrmAdapter();
+    private static final AuditService AUDIT = new AuditService();
+    private static final CaseService CASES = new CaseService(AUDIT);
+    private static final InteractionService INTERACTIONS = new InteractionService(AUDIT);
 
     private RelasiAiApplication() {
     }
@@ -55,6 +65,14 @@ public final class RelasiAiApplication {
     }
 
     private static void handle(HttpExchange exchange) throws IOException {
+        try {
+            route(exchange);
+        } catch (IllegalArgumentException exception) {
+            badRequest(exchange, "Malformed request encoding.");
+        }
+    }
+
+    private static void route(HttpExchange exchange) throws IOException {
         String path = exchange.getRequestURI().getPath();
         if ("/".equals(path) || "/index.html".equals(path)) {
             serveIndex(exchange);
@@ -66,9 +84,20 @@ public final class RelasiAiApplication {
             return;
         }
 
+        if (path.equals(API_PREFIX + "/cases") || path.startsWith(API_PREFIX + "/cases/")) {
+            handleCaseRequest(exchange, path);
+            return;
+        }
+        if (path.equals(API_PREFIX + "/interactions")) {
+            handleInteractionRequest(exchange);
+            return;
+        }
+        if (path.equals(API_PREFIX + "/audit")) {
+            handleAuditRequest(exchange);
+            return;
+        }
         if (!"GET".equals(exchange.getRequestMethod())) {
-            exchange.getResponseHeaders().set("Allow", "GET");
-            send(exchange, 405, "application/json; charset=utf-8", "{\"error\":\"method_not_allowed\"}");
+            methodNotAllowed(exchange, "GET");
             return;
         }
 
@@ -123,7 +152,285 @@ public final class RelasiAiApplication {
             send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"customer_not_found\"}");
             return;
         }
-        send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(CrmJson.customer360(customer.get())));
+        Customer360 base = customer.get();
+        Customer360 customer360 = new Customer360(base.customer(), base.contacts(), base.products(),
+                INTERACTIONS.list(customerId, user.customerScope()), CASES.list(user.customerScope(), customerId, null));
+        send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(CrmJson.customer360(customer360)));
+    }
+
+    private static void handleCaseRequest(HttpExchange exchange, String path) throws IOException {
+        String method = exchange.getRequestMethod();
+        if (path.equals(API_PREFIX + "/cases")) {
+            if ("GET".equals(method)) {
+                listCases(exchange);
+            } else if ("POST".equals(method)) {
+                createCase(exchange);
+            } else {
+                methodNotAllowed(exchange, "GET, POST");
+            }
+            return;
+        }
+
+        String remainder = path.substring((API_PREFIX + "/cases/").length());
+        String[] segments = remainder.split("/", -1);
+        String reference = URLDecoder.decode(segments[0], StandardCharsets.UTF_8);
+        if (segments.length == 1 && "GET".equals(method)) {
+            getCase(exchange, reference);
+        } else if (segments.length == 2 && "POST".equals(method)) {
+            switch (segments[1]) {
+                case "status" -> updateCaseStatus(exchange, reference);
+                case "assignment" -> assignCase(exchange, reference);
+                case "escalate" -> escalateCase(exchange, reference);
+                default -> send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"not_found\"}");
+            }
+        } else {
+            methodNotAllowed(exchange, "GET, POST");
+        }
+    }
+
+    private static void listCases(HttpExchange exchange) throws IOException {
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        String customerId = queryParameter(exchange.getRequestURI().getRawQuery(), "customerId");
+        String status = queryParameter(exchange.getRequestURI().getRawQuery(), "status");
+        if (customerId.length() > 100 || (!status.isBlank() && !"ALL".equalsIgnoreCase(status)
+                && !java.util.Set.of("OPEN", "IN_PROGRESS", "WAITING_FOR_CUSTOMER", "RESOLVED", "CLOSED")
+                .contains(status.strip().toUpperCase(Locale.ROOT)))) {
+            badRequest(exchange, "Invalid customerId or case status filter.");
+            return;
+        }
+        List<Map<String, Object>> cases = CASES.list(user.customerScope(), customerId, status).stream()
+                .map(CrmJson::caseSummary).toList();
+        send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of("cases", cases, "total", cases.size())));
+    }
+
+    private static void getCase(HttpExchange exchange, String reference) throws IOException {
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        var serviceCase = CASES.get(reference, user.customerScope());
+        if (serviceCase.isEmpty()) {
+            send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"case_not_found\"}");
+            return;
+        }
+        send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(CrmJson.serviceCase(serviceCase.get())));
+    }
+
+    private static void createCase(HttpExchange exchange) throws IOException {
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        if (!canHandleCases(user)) {
+            forbidden(exchange);
+            return;
+        }
+        Map<String, String> form = readForm(exchange);
+        if (form == null) return;
+        String customerId = form.getOrDefault("customerId", "").strip();
+        if (CRM.getCustomer360(customerId, user.customerScope()).isEmpty()) {
+            send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"customer_not_found\"}");
+            return;
+        }
+        try {
+            var serviceCase = CASES.create(user.id(), customerId, form.get("category"), form.get("priority"),
+                    form.get("subject"), form.get("description"));
+            send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(CrmJson.serviceCase(serviceCase)));
+        } catch (IllegalArgumentException exception) {
+            badRequest(exchange, exception.getMessage());
+        }
+    }
+
+    private static void updateCaseStatus(HttpExchange exchange, String reference) throws IOException {
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        if (!canHandleCases(user)) {
+            forbidden(exchange);
+            return;
+        }
+        Map<String, String> form = readForm(exchange);
+        if (form == null) return;
+        try {
+            var serviceCase = CASES.updateStatus(user.id(), reference, form.get("status"), form.get("resolution"), user.customerScope());
+            send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(CrmJson.serviceCase(serviceCase)));
+        } catch (CaseService.CaseNotFoundException exception) {
+            send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"case_not_found\"}");
+        } catch (IllegalArgumentException exception) {
+            badRequest(exchange, exception.getMessage());
+        }
+    }
+
+    private static void assignCase(HttpExchange exchange, String reference) throws IOException {
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        if (!isSupervisor(user)) {
+            forbidden(exchange);
+            return;
+        }
+        Map<String, String> form = readForm(exchange);
+        if (form == null) return;
+        try {
+            var serviceCase = CASES.assign(user.id(), reference, form.get("assigneeId"), user.customerScope());
+            send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(CrmJson.serviceCase(serviceCase)));
+        } catch (CaseService.CaseNotFoundException exception) {
+            send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"case_not_found\"}");
+        } catch (IllegalArgumentException exception) {
+            badRequest(exchange, exception.getMessage());
+        }
+    }
+
+    private static void escalateCase(HttpExchange exchange, String reference) throws IOException {
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        if (!isSupervisor(user)) {
+            forbidden(exchange);
+            return;
+        }
+        try {
+            var serviceCase = CASES.escalate(user.id(), reference, user.customerScope());
+            send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(CrmJson.serviceCase(serviceCase)));
+        } catch (CaseService.CaseNotFoundException exception) {
+            send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"case_not_found\"}");
+        } catch (IllegalArgumentException exception) {
+            badRequest(exchange, exception.getMessage());
+        }
+    }
+
+    private static void handleInteractionRequest(HttpExchange exchange) throws IOException {
+        if ("GET".equals(exchange.getRequestMethod())) {
+            listInteractions(exchange);
+        } else if ("POST".equals(exchange.getRequestMethod())) {
+            createInteraction(exchange);
+        } else {
+            methodNotAllowed(exchange, "GET, POST");
+        }
+    }
+
+    private static void listInteractions(HttpExchange exchange) throws IOException {
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        String customerId = queryParameter(exchange.getRequestURI().getRawQuery(), "customerId");
+        if (!customerId.isBlank() && CRM.getCustomer360(customerId, user.customerScope()).isEmpty()) {
+            send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"customer_not_found\"}");
+            return;
+        }
+        List<Map<String, Object>> interactions = INTERACTIONS.list(customerId.isBlank() ? null : customerId,
+                user.customerScope()).stream().map(CrmJson::interaction).toList();
+        send(exchange, 200, "application/json; charset=utf-8",
+                CrmJson.stringify(Map.of("interactions", interactions, "total", interactions.size())));
+    }
+
+    private static void createInteraction(HttpExchange exchange) throws IOException {
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        if (!canHandleCases(user)) {
+            forbidden(exchange);
+            return;
+        }
+        Map<String, String> form = readForm(exchange);
+        if (form == null) return;
+        String customerId = form.getOrDefault("customerId", "").strip();
+        if (CRM.getCustomer360(customerId, user.customerScope()).isEmpty()) {
+            send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"customer_not_found\"}");
+            return;
+        }
+        try {
+            var interaction = INTERACTIONS.create(user.id(), customerId, form.get("channel"), form.get("category"),
+                    form.get("summary"), form.get("outcome"), form.get("relatedCaseReference"), CASES, user.customerScope());
+            send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(CrmJson.interaction(interaction)));
+        } catch (CaseService.CaseNotFoundException exception) {
+            send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"case_not_found\"}");
+        } catch (IllegalArgumentException exception) {
+            badRequest(exchange, exception.getMessage());
+        }
+    }
+
+    private static void handleAuditRequest(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            methodNotAllowed(exchange, "GET");
+            return;
+        }
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        if (!isSupervisor(user)) {
+            forbidden(exchange);
+            return;
+        }
+        List<Map<String, Object>> events = AUDIT.events().stream().map(CrmJson::auditEvent).toList();
+        send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of("events", events)));
+    }
+
+    private static Map<String, String> readForm(HttpExchange exchange) throws IOException {
+        String contentType = exchange.getRequestHeaders().getFirst("Content-Type");
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("application/x-www-form-urlencoded")) {
+            badRequest(exchange, "Content-Type must be application/x-www-form-urlencoded.");
+            return null;
+        }
+        byte[] body;
+        try (InputStream input = exchange.getRequestBody()) {
+            body = input.readNBytes(8193);
+        }
+        if (body.length > 8192) {
+            send(exchange, 413, "application/json; charset=utf-8", "{\"error\":\"request_too_large\"}");
+            return null;
+        }
+        Map<String, String> form = new LinkedHashMap<>();
+        String encoded = new String(body, StandardCharsets.UTF_8);
+        if (!encoded.isBlank()) {
+            for (String pair : encoded.split("&")) {
+                String[] parts = pair.split("=", 2);
+                String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8);
+                String value = parts.length == 1 ? "" : URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+                form.put(key, value);
+            }
+        }
+        return form;
+    }
+
+    private static boolean canHandleCases(DemoUser user) {
+        return isSupervisor(user) || "CUSTOMER_SERVICE_OFFICER".equals(user.role());
+    }
+
+    private static boolean isSupervisor(DemoUser user) {
+        return "CRM_SUPERVISOR".equals(user.role()) || "CRM_ADMINISTRATOR".equals(user.role());
+    }
+
+    private static void methodNotAllowed(HttpExchange exchange, String allow) throws IOException {
+        exchange.getResponseHeaders().set("Allow", allow);
+        send(exchange, 405, "application/json; charset=utf-8", "{\"error\":\"method_not_allowed\"}");
+    }
+
+    private static void forbidden(HttpExchange exchange) throws IOException {
+        send(exchange, 403, "application/json; charset=utf-8", "{\"error\":\"forbidden\"}");
+    }
+
+    private static void badRequest(HttpExchange exchange, String message) throws IOException {
+        send(exchange, 400, "application/json; charset=utf-8",
+                CrmJson.stringify(Map.of("error", "invalid_request", "message", message == null ? "Invalid request." : message)));
     }
 
     private static DemoUser requestUser(HttpExchange exchange) {

@@ -1,233 +1,185 @@
 # RELASI AI — Development Plan
 
-> **Status:** Proposed implementation roadmap. No schedule or effort estimates are assigned because team capacity and delivery dates have not been defined.
+> **Status:** Proposed roadmap. The primary showcase profile is mock-only and requires no database, Docker, network access, credentials, or external systems. Dates and effort estimates are intentionally omitted until team capacity is known.
 > **Inputs:** [REQUIREMENT.md](REQUIREMENT.md) and [arc42.md](arc42.md).
 
 ## 1. Delivery Goal
 
-Deliver a locally runnable showcase that lets staff manage synthetic banking customers and service cases, use an AI assistant grounded in CRM and banking knowledge, inspect how the assistant reached its answer, and safely confirm AI-assisted case creation.
+Deliver a locally runnable banking CRM showcase where staff can manage synthetic customer and service data, use an AI assistant grounded in that data and bundled banking knowledge, inspect its execution trace, and explicitly confirm AI-assisted writes.
 
-The plan favors a complete, demonstrable vertical slice before expanding into optional sales capabilities or production-oriented infrastructure. Begin with a modular monolith and API boundaries; split deployable services only when a concrete demonstration or operational need justifies it.
+The default experience should start with one command on a developer machine with the supported Java runtime installed. All services are in-process; data is synthetic and held in memory; the app works offline. Prefer a modular monolith and bundled/static UI to minimize prerequisites. No database or container platform is part of the primary run path.
 
-## 2. Scope Priorities
+## 2. Run-Mode Principles
 
-### Must deliver for the showcase
+- **Mock by default:** CRM, LLM, NLP, embeddings/retrieval, payments, identity, audit, and MCP tool execution use deterministic local implementations.
+- **No dependencies beyond the app runtime:** No database, Docker, network connection, API key, external identity provider, model server, or separate MCP server is needed.
+- **One-command start:** A clean checkout should build and launch the complete showcase with a documented command. If frontend compilation needs Node, compile/bundle the static assets as part of the build so Node is not a runtime prerequisite.
+- **Configuration stays small:** Safe defaults should make the app work immediately. Optional configuration uses one local config file or a small set of environment variables. Do not require secrets for mock mode.
+- **Resettable state:** Seed synthetic fixtures deterministically on startup and provide a visible reset-to-demo-state action. Explain that in-memory changes and audit history reset on restart.
+- **Interfaces preserve replaceability:** Keep provider and tool boundaries, but do not implement external adapters as a prerequisite to the showcase.
+- **Offline acceptance:** All documented demo scenarios must pass with network access disabled.
 
-- Synthetic customer, contact, product, interaction, and case data.
-- Customer search and Customer 360 with interaction and case history.
-- Case creation and lifecycle operations, including assignment, priority, status, history, and SLA display.
-- Authentication and role/customer-scope authorization.
-- Deterministic mock LLM and structured NLP abstraction.
-- Knowledge ingestion and RAG answers with source references and abstention behavior.
-- MCP tool discovery and invocation with validation, authorization, audit, and explicit confirmation for writes.
-- AI execution trace visible to authorized users.
-- Docker Compose local setup and repeatable demonstration scenarios.
-- Dynamics-style and Salesforce-style CRM adapters behind a shared integration contract.
+## 3. Scope Priorities
 
-### Defer until the core showcase works
+### Required showcase capabilities
 
-- Leads, opportunities, campaigns, and campaign response tracking.
-- Real LLM provider integrations, real CRM connectivity, real vector database, Redis, and Kubernetes.
-- Production banking integrations, real customer information, payment execution, autonomous customer contact, and production deployment in a regulated environment. These are out of scope.
+- Customer, contact, product, interaction, and case data with search and Customer 360.
+- Case creation, assignment, lifecycle, history, and SLA display.
+- Demo identities and role/customer-scope authorization enforced in the app.
+- Deterministic NLP and mock LLM behind provider-neutral interfaces.
+- Bundled knowledge corpus, in-process retrieval, source references, and abstention.
+- MCP-compatible tool schemas and discovery backed by an in-process registry.
+- Explicit confirmation, reauthorization, and audit for writes.
+- Authorized AI execution trace, mock provider indicators, and repeatable synthetic fixtures.
+- Dynamics-style and Salesforce-style CRM adapters sharing the same in-memory contract.
+- One-command startup and all six demonstration scenarios without external dependencies.
 
-## 3. Work Sequence and Milestones
+### Deferred or excluded from the primary run mode
 
-Each milestone should leave the project in a runnable, reviewable state. The detailed order can be adjusted when implementation reveals dependencies, but security boundaries and domain contracts should be established before AI or MCP features depend on them.
+- Persistent database, Docker/Compose, cloud deployment, external identity, real MCP transport/server, and external model or CRM integrations.
+- Real vector database, Redis, Kubernetes, payments, real customer data, autonomous customer communication, and production banking integrations.
+- Leads, opportunities, and campaigns until the core cognitive CRM flows are complete.
 
-### Milestone 0 — Project baseline and contracts
+## 4. Milestones
 
-**Goal:** Establish a buildable foundation and agree on boundaries before feature code grows.
+Each milestone leaves the app runnable in mock mode and maintains the no-dependency guarantee.
 
-**Work:**
-
-- Confirm Java 25, Spring Boot, Angular/TypeScript, PostgreSQL, and Docker Compose versions and baseline project layout.
-- Choose the initial identity approach for the local demo, define roles and customer scope, and document the mock-user flow.
-- Define domain identifiers and initial data model for customer, contact, product relationship, service case, case event, interaction, knowledge source, and AI trace.
-- Define REST error conventions, API versioning approach, audit event shape, and correlation ID propagation.
-- Establish CRM, LLM, NLP, embedding, vector-search, and MCP integration boundaries.
-- Add a decision record for MCP implementation/transport and local vector retrieval approach.
-
-**Exit criteria:** A clean checkout can build; architecture decisions and data/API boundaries are documented; no real-data or secret dependency is required to start the application.
-
-### Milestone 1 — CRM foundation vertical slice
-
-**Goal:** Staff can find a synthetic customer and understand their relationship with the bank.
+### M0 — Zero-setup foundation and contracts
 
 **Work:**
 
-- Implement customer and contact persistence, validation, search/filtering, and status/segmentation fields.
-- Implement synthetic seed data covering multiple customer segments and representative products.
-- Implement Customer 360 assembly with products, account summary (mock), preferences, risk indicators (simulated), interaction history, cases, and a placeholder for insights.
-- Implement the first responsive UI for customer search, customer profile, and Customer 360.
-- Add role-checked API access and masking rules for sensitive synthetic fields.
-- Implement provider-neutral CRM contracts and the first adapter; keep domain behavior independent from adapter DTOs.
+- Confirm supported Java runtime and build command. Choose a UI packaging approach that needs no separate runtime service.
+- Define the initial customer, contact, product, case, interaction, knowledge, audit, and trace models.
+- Define application API/error contracts, correlation IDs, and provider interfaces.
+- Define seeded demo users, roles, and customer scopes; use in-process demo authentication without an identity server.
+- Define deterministic fixture and reset conventions, and document which data resets on restart.
+- Choose an in-process tool registry with MCP-compatible schemas; no network MCP server for the default profile.
+- Choose lexical or deterministic mock-vector retrieval behind a replaceable interface.
 
-**Exit criteria / demo:** A user can search for a seeded customer, open Customer 360, and inspect products, interactions, and cases. Data is synthetic, and access is checked server-side.
+**Exit:** A clean checkout builds and starts with one documented command and no database, Docker, network, credentials, or service installation.
 
-### Milestone 2 — Case and interaction operations
-
-**Goal:** Staff can manage service work and see its history.
-
-**Work:**
-
-- Implement case categories, priority, status, owner, description, SLA target, escalation state, resolution, and immutable case events/history.
-- Implement case queues and filters, assignment, status changes, and case detail UI.
-- Implement interaction records for web chat, email, telephone, branch, and mobile banking channels; connect interactions to customers and optionally cases.
-- Add validation for supported categories and lifecycle transitions.
-- Add authorization and audit events for case creation, assignment, escalation, and status changes.
-
-**Exit criteria / demo:** A service officer can review a customer's history, create and assign a case, change its status, and see the full case timeline and related interactions.
-
-### Milestone 3 — AI and NLP foundation
-
-**Goal:** The assistant responds predictably and exposes structured understanding.
+### M1 — Customer 360 vertical slice
 
 **Work:**
 
-- Add provider-neutral LLM and NLP interfaces with deterministic mock implementations.
-- Implement intent classification, sentiment analysis, language detection for Indonesian and English, and extraction of the required entity types.
-- Add a conversational assistant UI scoped to the selected customer when appropriate.
-- Define a typed assistant response containing answer, intent/entities, recommendations, and trace references.
-- Validate model/provider output and provide clear error/fallback behavior when an adapter is unavailable.
-- Mark mock AI use visibly in the UI and documentation.
+- Implement in-memory repositories for customers, contacts, products, interactions, and cases with validation and search.
+- Seed representative synthetic customers, segments, products, account summaries, and risk indicators.
+- Build Customer 360 and a responsive customer search/profile UI.
+- Enforce role and customer scope on the server; mask sensitive fields in UI and traces.
+- Implement the first provider-neutral CRM contract and a Dynamics-style in-memory adapter.
 
-**Exit criteria / demo:** The payment complaint example is classified as payment-related, negative or urgent as appropriate, with amount/date extracted; repeated inputs produce deterministic results and an inspectable NLP trace.
+**Demo/exit:** Start the app, sign in as a seeded user, search a customer, and inspect profile, products, interaction history, and cases. Reset restores the original fixtures.
 
-### Milestone 4 — Knowledge management and RAG
-
-**Goal:** The assistant answers policy questions with evidence and abstains when evidence is missing.
+### M2 — Case and interaction operations
 
 **Work:**
 
-- Define a versioned knowledge document format with title, source, section, effective date, and ownership metadata.
-- Add knowledge document management and a small synthetic banking knowledge corpus, including BI-FAST failure handling.
-- Implement chunking, mock embedding abstraction, vector/search adapter, ranking, thresholding, and context assembly.
-- Return retrieved evidence separately from generated answer content, with stable source references.
-- Implement insufficient-evidence abstention and show source links/references in the UI.
-- Add retrieval and LLM stages to execution traces.
+- Implement supported case categories, priorities, statuses, assignment, SLA, escalation, resolution, and event history in memory.
+- Build service queues, case detail, assignment, status updates, and interaction timelines.
+- Support all required simulated channels and optional interaction-to-case links.
+- Audit case writes and validate lifecycle transitions.
 
-**Exit criteria / demo:** The BI-FAST question returns an answer supported by retrieved source references; a question absent from the corpus yields a clear abstention and does not invent a policy citation.
+**Demo/exit:** A service officer reviews a customer, creates and assigns a case, updates status, and sees the case timeline and related interactions.
 
-### Milestone 5 — MCP tools and safe write flow
-
-**Goal:** Demonstrate agent-to-CRM interaction through controlled, auditable tools.
+### M3 — Mock AI and NLP
 
 **Work:**
 
-- Implement MCP server/client integration and tool discovery with JSON schemas.
-- Add the required tools: `search_customer`, `get_customer_360`, `get_customer_cases`, `get_payment_status`, `search_knowledge`, `create_service_case`, `update_case_status`, `assign_case`, and `get_customer_products`.
-- Label and enforce read-only versus write operations; validate schemas and business rules.
-- Propagate authenticated user and authorization scope to every tool call; audit discovery/invocation/result and denials.
-- Build a case proposal/review/confirmation UI. Bind confirmation to the exact proposal and reauthorize when executing.
-- Add an MCP tool explorer for authorized users.
+- Implement deterministic, in-process LLM and NLP providers behind interfaces.
+- Classify required intents, sentiment, and Indonesian/English language; extract required entities.
+- Add a customer-aware assistant UI and typed response model.
+- Validate structured output, show mock-provider status, and distinguish errors from abstention.
 
-**Exit criteria / demo:** Read tools can be discovered and invoked within the user's scope. AI-assisted case creation displays a preview, creates nothing before explicit confirmation, and returns an auditable case reference after confirmation.
+**Demo/exit:** The payment complaint example returns repeatable intent, sentiment, amount, date, suggested category, and priority with a visible NLP trace.
 
-### Milestone 6 — Integration interchangeability and execution trace
-
-**Goal:** Make the architectural claims visible and verifiable in the application.
+### M4 — Knowledge and RAG
 
 **Work:**
 
-- Implement the Salesforce-style mock adapter against the same CRM integration contract as the Dynamics-style adapter.
-- Add contract checks showing equivalent CRM operations across both adapters.
-- Complete the authorized AI execution trace view: user input, NLP result, retrieval results and citations, model invocation, MCP discovery and calls, tool outcomes, final answer, and duration.
-- Add masking and access controls to trace data; avoid retaining unnecessary prompt/customer content.
-- Add integration/provider status and a clear indicator for mock providers.
+- Bundle versioned synthetic banking documents as application resources or fixtures, including BI-FAST handling.
+- Implement chunking, mock embeddings if useful, local lexical/deterministic retrieval, ranking, thresholds, and context assembly.
+- Return evidence and generated answer as separate fields with stable source references.
+- Add a clear abstention when evidence is insufficient and include retrieval stages in the trace.
 
-**Exit criteria / demo:** Switching mock CRM adapter does not require domain or UI business-logic changes. Authorized staff can inspect a full AI trace; unauthorized users cannot access restricted traces or customer data.
+**Demo/exit:** BI-FAST question is answered with source references; unsupported questions abstain without invented citations. This works offline.
 
-### Milestone 7 — Local release readiness
-
-**Goal:** Make the showcase reproducible for a fresh user and evaluator.
+### M5 — MCP-compatible tools and confirmed writes
 
 **Work:**
 
-- Add Dockerfiles and Docker Compose for the frontend, backend, and PostgreSQL; include health checks and repeatable schema/seed initialization.
-- Add configuration examples without committing credentials; make mock mode the safe default.
-- Write README setup instructions, architecture and API links, MCP tool specifications, schema documentation, and troubleshooting notes.
-- Add automated unit, integration, and end-to-end coverage for acceptance criteria and the demo paths.
-- Verify the six demonstration scenarios end-to-end and document exact steps, sample prompts, expected evidence, and screenshots if useful.
-- Review security controls, synthetic-data guarantees, error handling, and performance target in the local environment.
+- Implement in-process tool discovery/invocation using MCP-compatible definitions and JSON schemas.
+- Provide `search_customer`, `get_customer_360`, `get_customer_cases`, `get_payment_status`, `search_knowledge`, `create_service_case`, `update_case_status`, `assign_case`, and `get_customer_products`.
+- Apply authorization, schema validation, read/write classification, and audit at the tool boundary.
+- Add case proposal, review, and confirmation flow. Bind confirmation to the exact proposal and reauthorize at execution.
+- Add an MCP/tool explorer that shows the schemas and mock execution results.
 
-**Exit criteria:** A fresh local environment can start with documented commands and synthetic fixtures; all required showcase scenarios complete predictably; known limitations are documented.
+**Demo/exit:** Read tools operate within the user's scope. A case is not created until the authorized user confirms the displayed proposal; confirmation and result are auditable.
 
-### Optional Milestone 8 — Sales and campaign capabilities
+### M6 — Interchangeable mocks and execution trace
 
-**Goal:** Expand CRM breadth after the core cognitive CRM story is complete.
+**Work:**
 
-**Work:** Leads, opportunities, campaigns, segmentation-based campaign targeting, campaign response tracking, and product recommendations. Ensure recommendations remain evidence-backed and advisory.
+- Add Salesforce-style adapter implementing the same in-memory CRM contract as the Dynamics-style adapter.
+- Demonstrate switching adapters without changing domain or UI behavior.
+- Complete trace display for input, NLP, retrieval/citations, model call, tool discovery/calls, results, final answer, and duration.
+- Apply role controls and masking to trace content; show all integrations as mock/local.
 
-**Exit criteria:** Users can demonstrate a basic lead-to-opportunity or campaign-response flow with synthetic data without compromising focus or stability of the core showcase.
+**Demo/exit:** Adapter switching preserves outcomes; authorized users can inspect the full trace, and restricted customer data stays out of unauthorized results.
 
-## 4. Cross-Cutting Work That Starts Early
+### M7 — Showcase polish and release readiness
 
-These are not final-phase add-ons; address them alongside the first implementation that needs them.
+**Work:**
 
-| Concern | Start by | Required practice |
-|---|---|---|
-| Authorization and customer scope | Milestone 0–1 | Enforce on the server and through AI/MCP paths; test negative access cases. |
-| Synthetic data and masking | Milestone 1 | Use generated fixtures only; mask sensitive values in API, UI, logs, prompts, and traces. |
-| Audit | Milestone 1–2 | Record security-relevant reads/writes and actor, target, time, result, and correlation ID. |
-| API contracts | Milestone 0–1 | Document request/response shapes and validation; keep provider types internal. |
-| Observability and AI trace | Milestone 0 foundation, completed by 6 | Correlate API, retrieval, model, and tool stages; apply RBAC and data minimization. |
-| Accessibility and responsive UI | Milestone 1 onward | Keep CRM and assistant usable on supported screen sizes and keyboard navigation. |
-| Failure handling | Milestone 3 onward | Make provider outage distinct from no evidence, validation failure, and denied access. |
+- Provide one-command start, clear startup errors, visible reset action, and reliable reset on restart.
+- Document supported runtime, launch command, seeded users, configuration, sample prompts, expected results, and troubleshooting.
+- Add automated checks for domain behavior, authorization, adapters, retrieval/source attribution, tool schemas, write confirmation, and end-to-end scenarios.
+- Verify all six requirement scenarios in offline mode from a fresh checkout.
+- Review performance, accessibility, masking, and error behavior for the local showcase.
+
+**Demo/exit:** A fresh supported machine can launch the whole app without Docker, a database, network access, credentials, or separately running services. All six scenarios are repeatable from seeded data.
+
+### Optional M8 — Sales and campaign features
+
+Add synthetic leads, opportunities, campaigns, campaign responses, and product recommendations after the core CRM + AI showcase is stable. Keep recommendations advisory and fixture-backed.
 
 ## 5. Demonstration Scenario Mapping
 
-| Required scenario | Primary milestone | Demonstration result |
+| Requirement scenario | Milestones | Expected outcome |
 |---|---|---|
-| 1. AI Customer 360 Assistant | 1, 3, 5 | Authorized customer, product, interaction, and case context combined into a structured summary. |
-| 2. Intelligent Complaint Classification | 3 | Intent, entities, sentiment, suggested category, and priority are shown. |
-| 3. AI Knowledge Assistant | 4 | Grounded answer with source references, or abstention where evidence is insufficient. |
-| 4. AI-Assisted Case Creation | 2, 5 | Case proposal, explicit confirmation, authorized tool execution, and returned case reference. |
-| 5. Next Best Action | 1, 3, 4 | Advisory recommendation based on profile, products, interactions, and relevant knowledge with explanations. |
-| 6. Conversational Banking CRM | 2, 3, 5 | Natural-language request retrieves and summarizes unresolved payment complaints within authorization scope. |
+| 1. AI Customer 360 Assistant | M1, M3, M5 | Authorized CRM context summarized with supporting data references. |
+| 2. Intelligent Complaint Classification | M3 | Intent, entities, sentiment, category, and priority shown deterministically. |
+| 3. AI Knowledge Assistant | M4 | Grounded answer with local source references, or abstention. |
+| 4. AI-Assisted Case Creation | M2, M5 | Reviewable proposal, explicit confirmation, tool execution, and case reference. |
+| 5. Next Best Action | M1, M3, M4 | Advisory recommendation with evidence from profile, products, interactions, and knowledge. |
+| 6. Conversational Banking CRM | M2, M3, M5 | In-scope unresolved payment complaints summarized from local fixtures. |
 
-Milestones 6–7 ensure the trace, adapter interchangeability, and reproducible local delivery are present across the scenarios.
+M6 and M7 make the trace, adapter comparison, and zero-setup behavior visible across all scenarios.
 
-## 6. Backlog and Planning Rules
+## 6. Cross-Cutting Practices
 
-For each feature, track:
+| Concern | Practice |
+|---|---|
+| Authorization | Seed demo identities/roles; enforce customer scope in REST, assistant orchestration, and every tool call. |
+| Synthetic data | Generate and bundle fixtures only; never require or accept real customer data for the showcase. |
+| State/reset | Keep repositories replaceable; expose reset-to-known-state; clearly state that in-memory changes and audit history do not survive restart. |
+| Audit and trace | Keep local and in-memory for the demo; mask content, scope access, and include actor, action, result, and correlation ID. |
+| Configuration | Mock mode and safe fixture set are defaults; no secrets or network settings are needed. Fail fast with actionable messages for invalid optional settings. |
+| Failure behavior | Distinguish unavailable mock/provider, denied access, invalid input, and insufficient evidence. CRM screens remain usable if AI is disabled. |
+| UI delivery | Prefer one app process and bundled assets so no separate dev server is needed for demo runtime. |
 
-- Requirement IDs or section references from `REQUIREMENT.md`.
-- User-visible outcome and acceptance criteria.
-- API/domain changes and data migration needs.
-- Authorization, audit, masking, and AI trace implications.
-- Automated verification needed (unit, integration, contract, or end-to-end).
-- Documentation and synthetic fixture updates.
+## 7. Planning and Definition of Done
 
-Prioritize work in this order when capacity is constrained:
+For each feature, record requirement references, acceptance criteria, data/contract changes, authorization/audit/masking impacts, automated verification, and documentation updates.
 
-1. Security, synthetic-data guarantees, and foundational contracts.
-2. Customer 360, cases, and interactions.
-3. Deterministic AI/NLP and grounded knowledge responses.
-4. Authorized MCP reads and confirmed MCP writes.
-5. Traceability, adapter comparison, and local deployment polish.
-6. Optional sales and campaign capabilities.
+Prioritize in this order: zero-setup foundation and security; Customer 360/cases/interactions; deterministic NLP/AI; grounded RAG; authorized MCP tools and confirmed writes; trace and adapter comparison; optional sales capabilities.
 
-Avoid starting a broad feature until its smallest end-to-end path can be described and demonstrated. Keep each milestone reviewable and update `arc42.md` when a key interface, deployment shape, or architecture decision changes.
+A feature is done when it meets its acceptance criteria, has server-side authorization and validation, audits sensitive operations, uses deterministic synthetic fixtures, has appropriate automated verification, updates relevant documentation, and works offline in the default profile without a database, Docker, or external service.
 
-## 7. Definition of Done
+## 8. Decisions to Close in M0
 
-A feature is done when:
-
-- Its acceptance criteria are met through the intended user or API flow.
-- Authorization and input validation are enforced server-side, including AI/MCP-mediated paths.
-- Writes and sensitive access have the required audit events; logs and traces mask data appropriately.
-- Synthetic fixtures cover the normal path and meaningful failure/denial paths.
-- Automated verification appropriate to the feature is added and passes in the supported local setup.
-- API, MCP, architecture, and user documentation are updated where affected.
-- The feature works in the local demo and does not rely on an unconfigured external provider.
-
-## 8. Initial Planning Decisions to Resolve
-
-These decisions should be closed early, preferably in Milestone 0, because they affect implementation shape:
-
-1. Local-demo identity and role setup, including how customer-level scope is represented.
-2. MCP SDK/transport and how authenticated identity is propagated to tool execution.
-3. Initial vector retrieval implementation and whether embeddings are deterministic mock vectors or lexical search behind the same port.
-4. Angular application and repository layout (single repository versus separate frontend project directory).
-5. API documentation and database migration conventions.
+1. Supported Java runtime and single-command build/launch mechanism.
+2. UI packaging that avoids a separate runtime toolchain or service.
+3. Demo login and customer-scope representation.
+4. In-process retrieval choice: deterministic mock vectors or lexical scoring.
+5. Reset semantics, including whether reset is available to all demo roles or administrators only.
 

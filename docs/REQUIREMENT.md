@@ -285,7 +285,7 @@ The assistant SHOULD abstain when reliable supporting information cannot be retr
 
 The platform MUST demonstrate MCP-based integration between AI agents and enterprise CRM capabilities.
 
-An MCP server MUST expose controlled business tools.
+An MCP tool registry/server MUST expose controlled business tools. The primary showcase MAY implement this registry in process using MCP-compatible tool definitions; a separate MCP server process is not required.
 
 Initial MCP tools:
 
@@ -316,7 +316,7 @@ The platform MUST distinguish between read-only and write operations.
 
 Write operations MUST require appropriate authorization and explicit user confirmation.
 
-The initial implementation MAY use a local MCP server with simulated CRM data.
+The initial implementation MAY use an in-process tool registry with simulated CRM data.
 
 # 6. AI Agent Capabilities
 
@@ -463,7 +463,7 @@ The solution MUST follow:
 - Java 25.
 - Spring Boot.
 - Spring Security.
-- Spring Data JPA.
+- In-memory repositories for the default mock-only profile; database access libraries MUST NOT be required to run it.
 - REST API.
 - Spring AI or an equivalent AI abstraction framework.
 
@@ -476,26 +476,26 @@ The solution MUST follow:
 
 ### Database
 
-- PostgreSQL.
-- Redis (optional caching).
+- The default showcase MUST use in-memory repositories and synthetic fixtures.
+- No database, database server, or cache service may be required to build or run the default showcase.
+- Mutable data and audit history MAY reset when the application restarts; the application MUST provide a way to restore the initial demonstration dataset.
+- Persistence may be considered as a separate future profile and MUST NOT become a prerequisite for the offline mock-only showcase.
 
 ### AI Infrastructure
 
 - Mock LLM provider.
 - Mock NLP engine.
 - Embedding abstraction.
-- Vector database abstraction.
+- In-process retrieval abstraction; deterministic lexical or mock-vector search is sufficient.
 - RAG orchestration module.
-- MCP server and client integration.
+- MCP-compatible tool schemas and discovery through an in-process registry; separate MCP server/client processes are not required for the default profile.
 
 ### Infrastructure
 
-- Docker.
-- Docker Compose.
-- Kubernetes-ready deployment.
+- One-command local startup using only the supported application runtime.
+- The default showcase MUST run offline without Docker, containers, credentials, or separately running services.
+- Kubernetes-ready deployment is a future enhancement and is not required for the showcase.
 - OpenAPI / Swagger.
-- Prometheus.
-- Grafana.
 - Structured application logging.
 
 ## 8.3 Logical Architecture
@@ -513,11 +513,15 @@ The architecture SHOULD contain the following logical components:
 9. NLP Processing Service.
 10. RAG Knowledge Service.
 11. Vector Search Adapter.
-12. MCP Server.
-13. MCP Client / AI Tool Integration.
+12. In-process MCP-compatible tool registry.
+13. AI tool integration and orchestration.
 14. Audit and Observability Service.
 
 The CRM domain MUST remain independent of the AI provider implementation.
+
+### Primary Mock-Only Run Profile
+
+The primary showcase profile MUST use deterministic in-process mocks for CRM providers, LLM, NLP, payment status, retrieval, demo identity, and MCP tool execution. It MUST use in-memory state, bundled synthetic fixtures, and safe defaults so a fresh checkout can start with one documented command and no database, Docker, network access, API keys, credentials, or external systems. Mutable data and audit history MAY reset on restart, and the UI MUST provide a way to restore the initial demo state. Optional future adapters or persistence profiles MUST NOT be necessary to build or run this profile.
 
 # 9. Mock Integration Requirements
 
@@ -584,7 +588,7 @@ All customer and transaction information MUST use synthetic demonstration data.
 | Maintainability | Clear separation of business, integration and AI layers |
 | Observability | Centralized logs and metrics |
 | Extensibility | Provider adapters for CRM and AI integrations |
-| Portability | Docker-based local deployment |
+| Portability | One-command offline local run with no database, Docker, credentials, or external systems |
 | Explainability | AI recommendations include supporting evidence where applicable |
 
 Performance targets are initial engineering objectives, not production service-level guarantees.
@@ -657,8 +661,8 @@ This capability is particularly important for demonstrating enterprise AI archit
 
 ## Phase 4 — MCP Integration
 
-- MCP server.
-- MCP client.
+- In-process MCP-compatible tool registry.
+- MCP tool discovery and invocation.
 - Tool discovery.
 - CRM tool integration.
 - Read-only and write-operation authorization.
@@ -676,7 +680,7 @@ This capability is particularly important for demonstrating enterprise AI archit
 
 - Security hardening.
 - Observability.
-- Docker deployment.
+- One-command offline mock-only startup and reset instructions.
 - Integration documentation.
 - Architecture documentation.
 - Demonstration scenarios.
@@ -697,7 +701,7 @@ The initial release will be considered successful when:
 10. AI-assisted case creation requires explicit confirmation.
 11. AI execution traces are visible to authorized users.
 12. CRM adapters demonstrate interchangeable Dynamics-style and Salesforce-style integration.
-13. The complete application can run locally using Docker Compose.
+13. The complete application can run locally with one documented command, without a database, Docker, network access, credentials, or external systems.
 14. Synthetic banking data is used throughout the demonstration.
 
 # 16. Out of Scope
@@ -724,10 +728,10 @@ The project MUST include:
 - C4 architecture diagrams.
 - Domain model documentation.
 - API specifications.
-- Database schema.
+- Conceptual domain model and in-memory data structure documentation.
 - MCP tool specifications.
 - AI workflow documentation.
-- Docker Compose configuration.
+- One-command local run instructions and deterministic resettable synthetic fixtures.
 - Synthetic demonstration dataset.
 - Automated tests.
 - End-to-end demonstration scenarios.

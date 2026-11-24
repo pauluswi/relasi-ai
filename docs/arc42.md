@@ -3,7 +3,7 @@
 > **Status:** Initial target architecture (planned; implementation has not yet established these components).
 > **Source of truth:** [REQUIREMENT.md](REQUIREMENT.md)
 
-This document follows the arc42 architecture template. It describes the intended architecture for the initial local demonstration release. Where the requirements leave implementation choices open, this document records a proposed baseline; those choices should be revisited as the implementation evolves.
+This document follows the arc42 architecture template. It describes the intended architecture for the initial local demonstration release. Its primary run mode is self-contained: no database, Docker, network access, credentials, or external systems are required. Where the requirements leave implementation choices open, this document records a proposed baseline; those choices should be revisited as the implementation evolves.
 
 ## 1. Introduction and Goals
 
@@ -18,7 +18,7 @@ The most important capabilities are:
 - Classify intent, sentiment, and entities; retrieve and cite relevant knowledge; abstain when evidence is insufficient.
 - Demonstrate MCP tool discovery and controlled invocation, including confirmation before write operations.
 - Show an inspectable AI execution trace and audit relevant access and actions.
-- Run locally with synthetic data and replaceable mock CRM and AI adapters.
+- Run offline with synthetic in-memory data and replaceable mock CRM and AI adapters, using one documented command and no database, Docker, or external systems.
 
 ### 1.2 Quality Goals
 
@@ -52,9 +52,10 @@ The following constraints come from the requirements or the initial project base
 - AI, NLP, embedding, vector search, and CRM integrations must be replaceable behind abstractions; initial providers may be deterministic mocks.
 - AI recommendations are advisory. Sensitive write operations require authorization and explicit user confirmation.
 - MCP tools must be discoverable, schema-defined, validated, authorized, and audited. Read and write operations must be distinguishable.
-- The intended stack is Java 25, Spring Boot, Spring Security, Spring Data JPA, REST, Angular/TypeScript, PostgreSQL, and Docker Compose. Redis is optional; Spring AI or an equivalent abstraction is open.
-- The expected delivery includes API and architecture documentation, database schema, MCP specifications, synthetic data, automated tests, and demonstration scenarios.
-- The repository currently has a minimal Java 25 Maven project and requirements document; application code, frontend, database, and deployment structure are not yet present. The architecture below is therefore a proposed target, not a description of implemented behavior.
+- The target baseline is Java 25 and a single local application process. A bundled UI may use Angular/TypeScript if it can be built and served without a separate runtime service. REST-style APIs and MCP-compatible schemas may be used inside the application.
+- Persistent storage, Docker, external model/CRM/identity services, and a separate MCP server are not part of the primary showcase run mode. In-memory repositories, local fixtures, deterministic mock providers, and an in-process tool registry are the default.
+- The expected delivery includes API and architecture documentation, conceptual data model, MCP tool specifications, synthetic data, automated tests, and demonstration scenarios. A deployed database schema is not required for the mock-only profile.
+- The repository currently has a minimal Java 25 Maven project and requirements document; application code and UI are not yet present. The architecture below is therefore a proposed target, not a description of implemented behavior.
 
 ## 3. System Scope and Context
 
@@ -67,7 +68,7 @@ flowchart LR
     CRM -->|Simulated provider contract| Dynamics[Dynamics-style mock]
     CRM -->|Simulated provider contract| Salesforce[Salesforce-style mock]
     Relasi -->|Knowledge query and cited answer| Knowledge[Banking knowledge repository]
-    Relasi -->|Authorized tool calls| MCP[MCP server and CRM tools]
+    Relasi -->|Authorized in-process tool calls| MCP[MCP-compatible tool registry]
     MCP --> CRM
     Relasi -->|Inference request| LLM[LLM provider adapter]
     LLM --> MockLLM[Deterministic mock provider]
@@ -82,11 +83,11 @@ flowchart LR
 | Neighbor | Interaction | Boundary / trust consideration |
 |---|---|---|
 | Browser frontend | HTTPS/REST requests and responses to backend API | Authenticated session or bearer token; do not treat browser-supplied customer identifiers as authorization. |
-| PostgreSQL | Persistent CRM, knowledge metadata, and audit data | Backend-only access; enforce validation and appropriate data minimization. |
-| MCP client / agent orchestration | Tool discovery and invocation | Only expose allowlisted tools; enforce identity, role, schema validation, and audit at the tool boundary. |
+| In-memory repositories | CRM, knowledge metadata, and audit state for the running demo | App-local only; seeded deterministically and resettable; state is lost at restart. |
+| In-process tool registry / agent orchestration | MCP-compatible tool discovery and invocation | Only expose allowlisted tools; enforce identity, role, schema validation, and audit at the tool boundary. No separate MCP server is required for the default mode. |
 | Mock CRM adapters | Shared CRM integration contract | Synthetic records; adapters must not leak vendor-specific models into domain logic. |
 | AI/NLP/RAG adapters | Internal provider interfaces | Treat model output as untrusted input; constrain context and validate structured output. |
-| Docker Compose environment | Local service orchestration | Demo deployment only; secrets/configuration must not be committed. |
+| Local runtime | Starts the UI and backend in one process | Supported Java runtime only; mock mode must work offline without credentials or service installation. |
 
 ## 4. Solution Strategy
 
@@ -96,7 +97,7 @@ flowchart LR
 4. Treat RAG as a traceable pipeline: ingest and chunk documents, retrieve and rank evidence, assemble bounded context, generate a response, and return source references separately from generated prose. Abstain when evidence is not adequate.
 5. Place MCP tools behind an authorization and validation boundary. Mark tools read-only or write-capable; require a user confirmation step before invoking writes, then record the decision and result.
 6. Make security, audit, and execution tracing cross-cutting capabilities. Apply the user's authorization scope to both direct API access and AI-mediated retrieval.
-7. Use PostgreSQL as the initial persistence baseline. Keep vector search behind an interface; a local PostgreSQL-backed implementation or deterministic mock can be selected for the demo without changing RAG orchestration.
+7. Use in-memory repositories and deterministic bundled fixtures as the initial persistence strategy. State resets on restart. Keep retrieval behind an interface and use local lexical or deterministic mock-vector search; no database or embedding service is required.
 
 ## 5. Building Block View
 
@@ -110,7 +111,7 @@ flowchart TB
     AI[AI orchestration\nAssistant · NLP · RAG]
     MCP[MCP tool boundary]
     ADAPT[Provider adapters\nCRM · LLM · NLP · Embedding · Vector]
-    DB[(PostgreSQL)]
+    DB[(In-memory repositories)]
     MOCK[Deterministic mock providers]
     UI -->|REST| API
     API --> CRM
@@ -140,7 +141,7 @@ The diagram is logical: these are proposed modules and interfaces, not necessari
 | NLP | Intent, sentiment, language, and entity extraction | Structured NLP result with confidence/evidence fields as appropriate |
 | Knowledge / RAG | Document management, chunking, retrieval, ranking, prompt context, source attribution | Knowledge document/chunk and retrieval result |
 | LLM / embedding / vector adapters | Provider-specific inference, embeddings, and similarity lookup | Provider-neutral interfaces and validated output |
-| MCP server and tools | Tool listing, JSON schemas, invocation, access checks, result mapping, audit | Read-only and write tool contracts |
+| MCP-compatible tool registry | Tool listing, JSON schemas, invocation, access checks, result mapping, audit | In-process read-only and write tool contracts |
 | Audit and observability | Security and business audit events, AI trace, structured logs, metrics | Correlation/trace identifiers; access-controlled views |
 
 ### 5.3 Domain Model (Initial)
@@ -157,7 +158,7 @@ erDiagram
     AI_EXECUTION ||--o{ AI_TRACE_EVENT : records
 ```
 
-The model is conceptual and requires refinement into the database schema. Customer, account, payment, and transaction values are synthetic demonstration data. Authorization policy and data retention details must be made explicit during implementation.
+The model is conceptual and guides in-memory repository structures for the primary showcase profile. Customer, account, payment, and transaction values are synthetic demonstration data. Authorization policy and reset behavior must be made explicit during implementation.
 
 ## 6. Runtime View
 
@@ -212,25 +213,27 @@ Confirmation must be tied to the specific reviewed proposal. A changed proposal 
 ```mermaid
 flowchart LR
     Browser[Developer / demo browser]
-    subgraph Compose[Docker Compose — proposed local setup]
-        Frontend[Angular web app]
-        Backend[Spring Boot API and modular backend]
-        Postgres[(PostgreSQL)]
+    subgraph LocalApp[Single local application process]
+        Frontend[Bundled CRM web UI]
+        Backend[Backend API and modular application]
+        Memory[(In-memory fixtures and state)]
+        Tools[In-process MCP-compatible tool registry]
+        Mocks[Mock CRM / AI / NLP / retrieval adapters]
+        Frontend --> Backend
+        Backend --> Memory
+        Backend --> Tools
+        Backend --> Mocks
     end
-    Browser --> Frontend
-    Frontend -->|REST / HTTPS in deployed environments| Backend
-    Backend --> Postgres
-    Backend --> MockCRM[In-process mock CRM adapters]
-    Backend --> MockAI[In-process mock AI / NLP / embedding adapters]
+    Browser -->|localhost| Frontend
 ```
 
-This is a suggested initial topology, not an existing Compose configuration. The requirements call for Docker Compose; no Compose file is present in the current project baseline. Exact ports, health checks, secrets, and persistence settings belong in deployment configuration and README documentation.
+This is the proposed primary topology, not an existing implementation. It must start with one documented command and must not require Docker, a database, network access, credentials, or external services. If the UI needs a separate development server during development, demo startup should still serve bundled assets from the application process.
 
 ### 7.2 Environment Notes
 
-- Local demo uses synthetic fixtures and deterministic mock integrations by default.
-- Keep credentials and environment-specific configuration outside source control.
-- Production-like deployment, Kubernetes configuration, external CRM connectivity, and regulated banking operation are outside the initial scope.
+- Local demo uses synthetic fixtures and deterministic in-process integrations by default. Include a reset-to-demo-state action; mutable state and audit history reset on restart.
+- Mock mode requires no credentials. Optional configuration should use safe defaults and a small set of documented environment variables or a local config file.
+- Database persistence, Docker/Compose, Kubernetes, external CRM connectivity, and regulated banking operation are outside the primary showcase run mode.
 
 ## 8. Cross-Cutting Concepts
 
@@ -270,7 +273,7 @@ This is a suggested initial topology, not an existing Compose configuration. The
 - Keep persistence mappings and vendor-specific DTOs out of domain use cases.
 - Use explicit interfaces for CRM, LLM, NLP, embedding, and vector search implementations.
 - Version external-facing REST and MCP schemas as they become public contracts.
-- Apply database migrations and synthetic seed data as repeatable deployment steps.
+- Load deterministic synthetic fixtures and provide a reset-to-demo-state operation.
 
 ## 9. Architecture Decisions
 
@@ -279,7 +282,7 @@ This is a suggested initial topology, not an existing Compose configuration. The
 | ADR-01 | Begin as a modular monolith with API-first boundaries | Fits the small demonstration repository and keeps modules separable without imposing distributed deployment overhead. | Proposed |
 | ADR-02 | Keep CRM and AI providers behind domain-owned interfaces | Allows mock-to-real provider replacement without changing business logic. | Required by requirements; implementation pending |
 | ADR-03 | Use deterministic mocks for initial inference and integrations | Enables repeatable scenarios without external accounts or network dependencies. | Required for initial AI provider; implementation pending |
-| ADR-04 | Use PostgreSQL as the initial relational store; isolate vector search behind an interface | Provides a practical local persistence baseline while preserving vector implementation flexibility. | Proposed |
+| ADR-04 | Use in-memory repositories and bundled deterministic fixtures for the primary demo; isolate retrieval behind an interface | Makes the showcase runnable offline with no setup beyond the application runtime; state is intentionally ephemeral. | Proposed |
 | ADR-05 | Gate MCP writes with authorization and explicit confirmation | Prevents a model or tool call from independently committing sensitive actions. | Required by requirements; implementation pending |
 | ADR-06 | Return RAG sources and trace events separately from answer text | Supports verification, explainability, and troubleshooting. | Required by requirements; implementation pending |
 | ADR-07 | Use synthetic banking data throughout | Prevents real customer and transaction data from entering the demo. | Required by requirements |
@@ -307,9 +310,9 @@ The project requirements call for automated tests and end-to-end demonstration s
 | Risk / open issue | Impact | Mitigation or next decision |
 |---|---|---|
 | Application structure and framework dependencies are not yet implemented | Architecture may diverge when modules and interfaces are introduced. | Keep this target explicitly provisional; update diagrams and decisions as code lands. |
-| MCP transport and server/client library are unspecified | Tool discovery, session handling, and security details remain undecided. | Select and document a compatible implementation; define schemas and authorization tests before exposing writes. |
-| JWT issuance, identity source, and detailed role matrix are unspecified | Access control cannot be implemented consistently without policy decisions. | Define demo identities, roles, customer scope, and token lifecycle with the security module. |
-| Vector store and embedding strategy are unspecified | Retrieval quality and local deployment details are open. | Start with an interface and deterministic/local implementation; evaluate against knowledge scenarios. |
+| In-process tool registry may not demonstrate remote MCP transport behavior | The showcase proves tool schemas, discovery, authorization, and invocation, but not remote process transport. | Keep the tool contract MCP-compatible; remote transport can be a future optional profile and must not become a default runtime dependency. |
+| Demo identity is intentionally local and simplified | It does not demonstrate enterprise identity federation. | Provide seeded users and clear role/scope behavior; keep external identity integration out of the default profile. |
+| Local deterministic retrieval is less representative than a production vector service | Retrieval quality is bounded by a small bundled corpus and simple ranking. | Keep the retrieval interface stable and document this as a showcase limitation. |
 | Knowledge provenance, update, and retention process are unspecified | Stale or untraceable banking guidance can produce unsafe answers. | Version documents and chunks; preserve source metadata and define reindex behavior. |
 | AI trace can contain sensitive content | Observability may become an unintended data exposure path. | Apply RBAC, masking, retention limits, and content minimization to trace persistence and display. |
 | Requirements describe broad enterprise capabilities for an initial release | Scope may exceed time available and reduce demonstration completeness. | Prioritize Phases 1–4 and acceptance criteria; treat sales/campaign features as lower priority. |

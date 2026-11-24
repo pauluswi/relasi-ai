@@ -1,5 +1,10 @@
 # RELASI AI
 
+![Java 25](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)
+![Spring Boot planned](https://img.shields.io/badge/Spring%20Boot-planned-brightgreen?logo=springboot&logoColor=white)
+![Showcase status](https://img.shields.io/badge/status-planning-blue)
+![Mock mode](https://img.shields.io/badge/run%20mode-offline%20mocks-informational)
+
 **A mock-first, offline Cognitive CRM showcase for synthetic banking workflows.**
 
 RELASI AI is planned as an enterprise CRM demonstration combining customer and case management with AI assistance, knowledge retrieval, and controlled tool use. Its primary showcase mode is designed to run locally without a database, Docker, network access, credentials, or external systems.

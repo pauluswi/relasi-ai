@@ -89,11 +89,15 @@
     <section id="customer-detail" class="card" hidden aria-live="polite"></section>
     <section class="card" aria-labelledby="assistant-title">
       <h2 id="assistant-title">AI customer assistant <span class="badge">Deterministic mock</span></h2>
-      <p class="muted" id="assistant-context">Select a customer to include authorized Customer 360 context. Policy answers and RAG sources are part of a later milestone.</p>
+      <p class="muted" id="assistant-context">Select a customer to include authorized Customer 360 context. Policy and procedure questions use bundled synthetic sources.</p>
       <label for="assistant-question">Ask a question</label>
       <textarea id="assistant-question" class="assistant-question" maxlength="2000" placeholder="Summarize this customer's relationship with the bank, or describe a customer inquiry…"></textarea>
       <div class="form-actions"><button id="ask-assistant" type="button">Ask assistant</button></div>
       <div id="assistant-result" aria-live="polite"></div>
+    </section>
+    <section class="card" aria-labelledby="knowledge-title">
+      <h2 id="knowledge-title">Knowledge library <span class="badge">Synthetic documents</span></h2>
+      <div id="knowledge-documents" class="customer-list"><p class="empty">Loading bundled knowledge documents…</p></div>
     </section>
   </main>
   <script>
@@ -127,12 +131,13 @@
         userSelect.append(option);
       }
       await searchCustomers();
+      await loadKnowledgeDocuments();
     }
 
     async function searchCustomers() {
       selectedCustomerId = '';
       detail.hidden = true;
-      document.querySelector('#assistant-context').textContent = 'Select a customer to include authorized Customer 360 context. Policy answers and RAG sources are part of a later milestone.';
+      document.querySelector('#assistant-context').textContent = 'Select a customer to include authorized Customer 360 context. Policy and procedure questions use bundled synthetic sources.';
       customerList.replaceChildren(document.createTextNode('Loading customers…'));
       try {
         const query = encodeURIComponent(searchInput.value.trim());
@@ -443,6 +448,23 @@
         && !serviceCase.escalated && new Date(serviceCase.slaDeadline).getTime() < Date.now();
     }
 
+    async function loadKnowledgeDocuments() {
+      const container = document.querySelector('#knowledge-documents');
+      try {
+        const result = await api('/api/v1/knowledge/documents');
+        container.replaceChildren();
+        for (const document of result.documents) {
+          const card = makeText('article', '', 'detail-card');
+          card.append(makeText('strong', document.title));
+          card.append(makeText('p', `${document.section} · ${document.source}`, 'muted'));
+          card.append(makeText('small', `Effective ${document.effectiveDate} · ${document.chunkCount} chunks · ${document.id}`));
+          container.append(card);
+        }
+      } catch (error) {
+        container.replaceChildren(makeText('p', error.message, 'error'));
+      }
+    }
+
     async function askAssistant() {
       const message = assistantQuestion.value.trim();
       if (!message) {
@@ -463,8 +485,24 @@
     function renderAssistantResponse(response) {
       assistantResult.replaceChildren();
       assistantResult.append(makeText('p', `Request: ${response.input}`, 'muted'));
+      assistantResult.append(makeText('span', response.abstained ? 'Abstained · no reliable source' : response.grounded ? 'Grounded in retrieved sources' : 'CRM/service mock response', 'badge'));
       const answer = makeText('p', response.answer, 'assistant-answer');
       assistantResult.append(answer);
+      if (response.sources.length) {
+        assistantResult.append(makeText('h3', 'Retrieved sources'));
+        const sources = document.createElement('ul');
+        for (const source of response.sources) {
+          const entry = document.createElement('li');
+          entry.append(makeText('strong', `${source.title} · ${source.section}`));
+          entry.append(makeText('div', `${source.reference} · ${source.source} · effective ${source.effectiveDate} · relevance ${(source.score * 100).toFixed(0)}%`, 'muted'));
+          const excerpt = document.createElement('details');
+          excerpt.append(makeText('summary', 'View retrieved passage'));
+          excerpt.append(makeText('p', source.content, 'muted'));
+          entry.append(excerpt);
+          sources.append(entry);
+        }
+        assistantResult.append(sources);
+      }
       const analysis = makeText('div', '', 'analysis-pills');
       analysis.append(
         makeText('span', `Intent: ${response.nlp.intent.replaceAll('_', ' ')}`, 'analysis-pill'),

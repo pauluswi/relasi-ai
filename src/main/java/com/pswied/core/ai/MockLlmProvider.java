@@ -3,13 +3,16 @@ package com.pswied.core.ai;
 import com.pswied.core.crm.CrmModels.Customer360;
 import com.pswied.core.crm.CrmModels.ProductRelationship;
 import com.pswied.core.crm.CrmModels.ServiceCase;
+import com.pswied.core.knowledge.KnowledgeService.RetrievedChunk;
 
 import java.util.List;
 
 /** Deterministic response provider for the local demonstration scenarios. */
 public final class MockLlmProvider implements LlmProvider {
     @Override
-    public String generate(String userMessage, NlpResult analysis, Customer360 customerContext) {
+    public String generate(String userMessage, NlpResult analysis, Customer360 customerContext,
+                           List<RetrievedChunk> knowledgeContext) {
+        if (!knowledgeContext.isEmpty()) return groundedKnowledgeAnswer(knowledgeContext);
         String normalized = userMessage.toLowerCase(java.util.Locale.ROOT);
         if (isCustomerSummary(normalized)) return customerSummary(customerContext);
         if (isCaseStatusQuestion(normalized) && customerContext != null) return caseStatusSummary(customerContext.cases());
@@ -56,7 +59,7 @@ public final class MockLlmProvider implements LlmProvider {
                 : "Most recent interaction: " + context.interactions().getFirst().summary() + ".";
         String nextAction = openCases.isEmpty()
                 ? "Review the recent interaction and confirm whether follow-up is needed."
-                : "Review the oldest open case and update the customer on its progress.";
+                : "Review open cases and update the customer on their progress.";
         return "Customer 360 summary for " + customer.fullName() + " (" + customer.customerNumber() + "). "
                 + "Segment: " + customer.segment().replace('_', ' ').toLowerCase() + "; status: " + customer.status().toLowerCase() + ". "
                 + "Products: " + (products.isBlank() ? "none recorded" : products) + ". "
@@ -70,6 +73,15 @@ public final class MockLlmProvider implements LlmProvider {
                 serviceCase.reference() + " is " + serviceCase.status().replace('_', ' ').toLowerCase()
                         + " (" + serviceCase.priority().toLowerCase() + " priority)")
                 .collect(java.util.stream.Collectors.joining("; ")) + ".";
+    }
+
+    private static String groundedKnowledgeAnswer(List<RetrievedChunk> chunks) {
+        StringBuilder answer = new StringBuilder("Based on the retrieved synthetic demo guidance:\n\n");
+        for (RetrievedChunk chunk : chunks) {
+            answer.append(chunk.content()).append("\n\n");
+        }
+        answer.append("This guidance is synthetic showcase content, not a real bank policy.");
+        return answer.toString().strip();
     }
 
     private static boolean isCustomerSummary(String text) {

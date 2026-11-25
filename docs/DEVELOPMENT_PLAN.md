@@ -100,7 +100,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Implemented slice:** `POST /api/v1/assistant/respond` runs deterministic intent, sentiment, language, and entity extraction, then calls the mock LLM adapter. It can summarize an in-scope selected customer's products, cases, and recent interactions. The response includes typed NLP results, the mock-provider identifier, and per-stage trace timing; the bundled UI displays the answer, extracted fields, and trace. It does not retrieve banking knowledge or claim to verify transactions; RAG and source attribution remain in M4.
 
-### M4 — Knowledge and RAG
+### M4 — Knowledge and RAG — started
 
 **Work:**
 
@@ -110,6 +110,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 - Add a clear abstention when evidence is insufficient and include retrieval stages in the trace.
 
 **Demo/exit:** BI-FAST question is answered with source references; unsupported questions abstain without invented citations. This works offline.
+
+**Implemented slice:** Three synthetic banking guidance documents are bundled as versioned Markdown resources. Startup parses their metadata, chunks their content, and indexes them in memory. Deterministic lexical retrieval ranks passages and returns stable document/chunk references, snippets, and relevance scores. Policy/procedure requests pass bounded retrieved passages to the mock LLM; the response keeps citations separate from generated text. If retrieval returns no passage above the threshold, generation is skipped and the assistant abstains. The UI lists the corpus and displays citations and excerpts. Document upload, editing, and richer retrieval evaluation remain future work.
 
 ### M5 — MCP-compatible tools and confirmed writes
 

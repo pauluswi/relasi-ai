@@ -13,6 +13,7 @@ import com.pswied.core.ai.AssistantResponse;
 import com.pswied.core.ai.AssistantService;
 import com.pswied.core.ai.DeterministicNlpEngine;
 import com.pswied.core.ai.MockLlmProvider;
+import com.pswied.core.knowledge.KnowledgeService;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,7 +34,8 @@ public final class RelasiAiApplication {
     private static final AuditService AUDIT = new AuditService();
     private static final CaseService CASES = new CaseService(AUDIT);
     private static final InteractionService INTERACTIONS = new InteractionService(AUDIT);
-    private static final AssistantService ASSISTANT = new AssistantService(new DeterministicNlpEngine(), new MockLlmProvider());
+    private static final KnowledgeService KNOWLEDGE = new KnowledgeService();
+    private static final AssistantService ASSISTANT = new AssistantService(new DeterministicNlpEngine(), new MockLlmProvider(), KNOWLEDGE);
 
     private RelasiAiApplication() {
     }
@@ -103,6 +105,10 @@ public final class RelasiAiApplication {
         }
         if (path.equals(API_PREFIX + "/assistant/respond")) {
             handleAssistantRequest(exchange);
+            return;
+        }
+        if (path.equals(API_PREFIX + "/knowledge/documents") || path.equals(API_PREFIX + "/knowledge/search")) {
+            handleKnowledgeRequest(exchange, path);
             return;
         }
         if (!"GET".equals(exchange.getRequestMethod())) {
@@ -426,6 +432,34 @@ public final class RelasiAiApplication {
 
         AssistantResponse response = ASSISTANT.respond(message, customerContext);
         send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(response.asJsonValue()));
+    }
+
+    private static void handleKnowledgeRequest(HttpExchange exchange, String path) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            methodNotAllowed(exchange, "GET");
+            return;
+        }
+        if (requestUser(exchange) == null) {
+            unauthorized(exchange);
+            return;
+        }
+        if ((API_PREFIX + "/knowledge/documents").equals(path)) {
+            List<Map<String, Object>> documents = KNOWLEDGE.documents().stream()
+                    .map(document -> document.summaryJson(KNOWLEDGE.chunkCount(document.id())))
+                    .toList();
+            send(exchange, 200, "application/json; charset=utf-8",
+                    CrmJson.stringify(Map.of("documents", documents, "total", documents.size(), "mode", "synthetic-mock")));
+            return;
+        }
+        String query = queryParameter(exchange.getRequestURI().getRawQuery(), "q");
+        if (query.length() > 300) {
+            badRequest(exchange, "Knowledge query must be 300 characters or fewer.");
+            return;
+        }
+        List<Map<String, Object>> results = KNOWLEDGE.search(query, 5).stream()
+                .map(KnowledgeService.RetrievedChunk::asJsonValue).toList();
+        send(exchange, 200, "application/json; charset=utf-8",
+                CrmJson.stringify(Map.of("query", query, "results", results, "total", results.size(), "mode", "synthetic-mock")));
     }
 
     private static Map<String, String> readForm(HttpExchange exchange) throws IOException {

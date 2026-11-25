@@ -3,6 +3,7 @@ package com.pswied.core.ai;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.pswied.core.knowledge.KnowledgeService.RetrievedChunk;
 
 public record AssistantResponse(
         String input,
@@ -10,11 +11,15 @@ public record AssistantResponse(
         String provider,
         String customerId,
         NlpResult nlp,
+        boolean grounded,
+        boolean abstained,
+        List<RetrievedChunk> sources,
         List<TraceStep> trace,
         long durationMs) {
 
     public AssistantResponse {
         trace = List.copyOf(trace);
+        sources = List.copyOf(sources);
     }
 
     public Map<String, Object> asJsonValue() {
@@ -23,6 +28,9 @@ public record AssistantResponse(
         result.put("answer", answer);
         result.put("provider", provider);
         result.put("customerId", customerId);
+        result.put("grounded", grounded);
+        result.put("abstained", abstained);
+        result.put("sources", sources.stream().map(RetrievedChunk::asJsonValue).toList());
         result.put("nlp", Map.of(
                 "intent", nlp.intent(),
                 "confidence", nlp.confidence(),

@@ -125,7 +125,7 @@ flowchart TB
     AI --> DB
 ```
 
-The diagram is the target logical structure. The implementation currently includes the local HTTP shell, demo identity directory, provider-neutral CRM read contract, deterministic Customer 360 fixtures, scoped search/profile endpoints, in-memory case/interaction workflows with audit history, and a deterministic mock assistant/NLP path. Customer profile writes, RAG knowledge retrieval, and MCP tool workflows remain planned.
+The diagram is the target logical structure. The implementation currently includes the local HTTP shell, demo identity directory, provider-neutral CRM read contract, deterministic Customer 360 fixtures, scoped search/profile endpoints, in-memory case/interaction workflows with audit history, a deterministic mock assistant/NLP path, and a bundled lexical RAG flow. Customer profile writes and MCP tool workflows remain planned.
 
 ### 5.2 Level 2 — Backend Modules
 

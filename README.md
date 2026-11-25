@@ -9,14 +9,14 @@
 
 RELASI AI is planned as an enterprise CRM demonstration combining customer and case management with AI assistance, knowledge retrieval, and controlled tool use. Its primary showcase mode is designed to run locally without a database, Docker, network access, credentials, or external systems.
 
-> **Project status:** The local runtime, scoped Customer 360, case/interaction workflows, and deterministic AI/NLP assistant foundation are implemented. RAG and MCP tool workflows remain planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
+> **Project status:** The local runtime, scoped Customer 360, case/interaction workflows, deterministic AI/NLP, and bundled mock RAG flow are implemented. MCP tool workflows remain planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
 
 ## What the showcase will demonstrate
 
 - Scoped customer search and a consolidated Customer 360 profile with synthetic contacts, products, interactions, and case snapshots.
 - Service cases, assignments, SLA escalation, history, and customer interactions.
 - Deterministic mock AI and NLP for customer service inquiries.
-- Local banking knowledge retrieval with source references and abstention when evidence is missing.
+- Local synthetic banking knowledge retrieval with source references and abstention when evidence is missing.
 - MCP-compatible tool discovery and execution through an in-process registry.
 - Explicit user confirmation before AI-assisted write operations.
 - An inspectable AI execution trace and interchangeable Dynamics-style and Salesforce-style CRM mocks.
@@ -58,6 +58,8 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `POST /api/v1/interactions` | Records an interaction for an in-scope customer, optionally linked to that customer's case. |
 | `GET /api/v1/audit` | Lists in-memory audit events (supervisor or administrator). |
 | `POST /api/v1/assistant/respond` | Analyzes a natural-language request and returns a deterministic mock response, structured NLP result, and execution trace. Optional `customerId` context is scope-checked. |
+| `GET /api/v1/knowledge/documents` | Lists bundled synthetic knowledge sources and chunk counts. |
+| `GET /api/v1/knowledge/search?q=...` | Searches the local synthetic knowledge corpus and returns ranked passages with stable source references. |
 
 Write endpoints accept `application/x-www-form-urlencoded` fields. The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; customer profile changes are not implemented.
 
@@ -77,11 +79,11 @@ Write endpoints accept `application/x-www-form-urlencoded` fields. The demo iden
 
 ## Demonstration scenarios
 
-The planned release will support these repeatable scenarios using local fixtures:
+The requirements define these repeatable scenarios. Customer 360, complaint classification, and the grounded knowledge answer are implemented in the current slices; AI-confirmed writes, next-best-action, and multi-customer case aggregation remain planned.
 
 1. Summarize a customer's relationship with the bank.
 2. Classify a payment complaint and extract relevant details.
-3. Answer a banking procedure question with local source references.
+3. Answer a synthetic banking procedure question with local source references, or abstain if no passage supports it.
 4. Prepare and confirm creation of a service case.
 5. Recommend an evidence-backed next action for a customer.
 6. Find and summarize unresolved payment complaints within the user's access scope.

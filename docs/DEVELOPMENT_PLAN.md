@@ -158,6 +158,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Scenario slice:** The assistant now produces rule-based, advisory next-best-action guidance from authorized profile, case, product, and interaction context, with a synthetic product review source. A new read-only MCP tool searches unresolved payment complaints only within the caller's customer scope; the assistant groups matches by customer and returns structured case summaries. Synthetic unresolved payment cases and interactions make both flows repeatable. Automated tests and full six-scenario verification remain pending.
 
+**Accessibility and error-handling slice:** Added explicit label/control associations for generated forms, visible keyboard focus, reduced-motion handling, busy/status announcements, clearer local server/network errors, and disabled submission states. Customer, dashboard, assistant, and tool responses are discarded if they return after the demo identity changes, preventing stale scoped data from appearing under another selected identity. Screen-reader and browser verification remain pending.
+
 ### Optional M8 — Sales and campaign features
 
 Add synthetic leads, opportunities, campaigns, campaign responses, and product recommendations after the core CRM + AI showcase is stable. Keep recommendations advisory and fixture-backed.

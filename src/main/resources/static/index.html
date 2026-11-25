@@ -22,6 +22,8 @@
     select, input, button { width: 100%; box-sizing: border-box; font: inherit; border: 1px solid #b9c6d4; border-radius: 7px; padding: .65rem .75rem; background: white; color: inherit; }
     button { color: white; background: #126b65; border-color: #126b65; cursor: pointer; font-weight: 600; }
     button:hover { background: #0d5752; }
+    button:disabled { opacity: .58; cursor: not-allowed; }
+    :focus-visible { outline: 3px solid #e5a83b; outline-offset: 3px; }
     .customer-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .7rem; }
     .customer-option { text-align: left; color: #182333; background: #fff; border-color: #dce4ed; }
     .customer-option[aria-current="true"] { border-color: #126b65; box-shadow: 0 0 0 2px #126b6522; }
@@ -96,6 +98,7 @@
     .priority-tag { display: inline-block; padding: .2rem .48rem; border-radius: 99px; color: #91510d; background: #fff0d7; font-size: .7rem; font-weight: 750; white-space: nowrap; }
     .priority-tag.normal { color: #38624e; background: #e3f4e9; }
     .dashboard-scope { color: #73808b; font-size: .78rem; }
+    .reset-feedback { grid-column: 1 / -1; margin: 0; color: #ffe4bd; font-size: .8rem; }
     [hidden] { display: none !important; }
     @media (max-width: 700px) {
       header { align-items: start; flex-direction: column; }
@@ -106,6 +109,7 @@
       .dashboard-hero { align-items: start; flex-direction: column; }
     }
     @media (max-width: 420px) { .chart-row { grid-template-columns: 95px minmax(45px, 1fr) 1.5rem; gap: .4rem; font-size: .75rem; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
   </style>
 </head>
 <body>
@@ -114,6 +118,7 @@
     <div class="toolbar" style="grid-template-columns: auto auto; align-items: center">
       <span class="badge" id="health">Checking local runtime…</span>
       <button id="reset-demo" type="button" title="Restore seeded cases and interactions" disabled>Reset demo data</button>
+      <p class="reset-feedback" id="reset-feedback" role="status" aria-live="polite"></p>
     </div>
   </header>
   <main>
@@ -137,7 +142,7 @@
         <div><p class="eyebrow">RELASI intelligence</p><h2 id="dashboard-title">Portfolio overview</h2><p id="dashboard-subtitle">A live view of customers, service demand, and recent activity.</p></div>
         <span class="dashboard-date" id="dashboard-date">Scoped demo analytics</span>
       </div>
-      <div class="dashboard-grid" id="dashboard-metrics" aria-live="polite"><article class="metric-card"><span class="metric-label">Loading analytics…</span></article></div>
+      <div class="dashboard-grid" id="dashboard-metrics" aria-live="polite" aria-busy="true"><article class="metric-card"><span class="metric-label">Loading analytics…</span></article></div>
       <div class="dashboard-panels">
         <section class="dashboard-panel" aria-labelledby="case-chart-title"><div class="panel-heading"><div><h3 id="case-chart-title">Service case health</h3><p>Case volume by current status</p></div><span class="badge" id="case-total-badge">—</span></div><div class="chart-list" id="case-chart"></div></section>
         <section class="dashboard-panel" aria-labelledby="segment-chart-title"><div class="panel-heading"><div><h3 id="segment-chart-title">Customer portfolio</h3><p>Relationship mix in your scope</p></div><span class="badge" id="customer-total-badge">—</span></div><div class="chart-list" id="segment-chart"></div></section>
@@ -179,6 +184,7 @@
   <script>
     const healthBadge = document.querySelector('#health');
     const resetButton = document.querySelector('#reset-demo');
+    const resetFeedback = document.querySelector('#reset-feedback');
     const userSelect = document.querySelector('#demo-user');
     const searchInput = document.querySelector('#search');
     const customerList = document.querySelector('#customer-list');
@@ -192,18 +198,30 @@
     const demoRoles = {};
     let selectedCustomerId = '';
     let dashboardRequest = 0;
+    let labelSequence = 0;
+    let customerSearchRequest = 0;
+    let customerLoadRequest = 0;
 
     async function api(path, options = {}) {
       const headers = { 'X-Demo-User': userSelect.value, ...(options.headers || {}) };
       if (options.body instanceof URLSearchParams) headers['Content-Type'] = 'application/x-www-form-urlencoded';
-      const response = await fetch(path, { ...options, headers });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.message || payload.error || `Request failed (${response.status})`);
+      let response;
+      try {
+        response = await fetch(path, { ...options, headers });
+      } catch {
+        throw new Error('Cannot reach the local RELASI AI server. Confirm that ./run.sh is running.');
+      }
+      let payload = {};
+      try { payload = (await response.json()) || {}; } catch { /* Use the HTTP status message below. */ }
+      if (!response.ok) throw new Error(payload?.message || payload?.error || `The local server returned HTTP ${response.status}.`);
       return payload;
     }
 
     async function loadUsers() {
-      const response = await fetch('/api/v1/demo-users');
+      let response;
+      try { response = await fetch('/api/v1/demo-users'); }
+      catch { throw new Error('Cannot reach the local RELASI AI server. Confirm that ./run.sh is running.'); }
+      if (!response.ok) throw new Error(`Could not load demo identities (HTTP ${response.status}).`);
       const payload = await response.json();
       for (const user of payload.users) demoRoles[user.id] = user.role;
       for (const user of payload.users) {
@@ -216,7 +234,7 @@
       await searchCustomers();
       await loadDashboard();
       await loadKnowledgeDocuments();
-      await loadTools();
+      await loadTools().catch(error => toolOutput.replaceChildren(makeText('p', error.message, 'error')));
     }
 
     async function loadDashboard() {
@@ -227,6 +245,7 @@
       const attention = document.querySelector('#attention-list');
       const activity = document.querySelector('#activity-list');
       metrics.replaceChildren(makeText('article', 'Loading analytics…', 'metric-card'));
+      metrics.setAttribute('aria-busy', 'true');
       try {
         const [customerData, caseData, interactionData] = await Promise.all([
           api('/api/v1/customers'), api('/api/v1/cases'), api('/api/v1/interactions')
@@ -249,6 +268,7 @@
           card.append(makeText('span', label, 'metric-label'), makeText('strong', value, 'metric-value'), makeText('p', foot, 'metric-foot'));
           return card;
         }));
+        metrics.setAttribute('aria-busy', 'false');
         document.querySelector('#dashboard-subtitle').textContent = `${customers.length} customers · ${activeCases.length} active cases · scoped to ${userSelect.options[userSelect.selectedIndex]?.textContent || 'selected identity'}.`;
         document.querySelector('#dashboard-date').textContent = `Demo snapshot · ${new Date().toLocaleDateString()}`;
         document.querySelector('#case-total-badge').textContent = `${cases.length} total`;
@@ -295,9 +315,10 @@
           row.append(copy, makeText('span', interaction.category.replaceAll('_', ' '), 'priority-tag normal'));
           activity.append(row);
         }
-        document.querySelector('#identity-note').textContent = `${customers.length} customer profiles and related service activity are limited to the selected demo identity's scope.`;
+        document.querySelector('#identity-note').textContent = `${customers.length} customer profiles and related service activity are limited to the selected demo identity's scope. The identity selector is a local demo convenience, not production authentication.`;
       } catch (error) {
         if (requestId !== dashboardRequest) return;
+        metrics.setAttribute('aria-busy', 'false');
         metrics.replaceChildren(makeText('p', `Analytics unavailable: ${error.message}`, 'error'));
         caseChart.replaceChildren();
         segmentChart.replaceChildren();
@@ -338,15 +359,21 @@
 
     async function resetDemoState() {
       if (!window.confirm('Restore seeded cases and interactions, clear pending write confirmations, and clear the audit history?')) return;
+      resetButton.disabled = true;
+      resetFeedback.textContent = 'Restoring seeded demo data…';
       try {
         await api('/api/v1/reset', { method: 'POST' });
         window.location.reload();
       } catch (error) {
-        window.alert(error.message);
+        resetFeedback.textContent = error.message;
+        updateResetButton();
       }
     }
 
     async function searchCustomers() {
+      const requestId = ++customerSearchRequest;
+      const identityId = userSelect.value;
+      customerLoadRequest++;
       selectedCustomerId = '';
       detail.hidden = true;
       document.querySelector('#assistant-context').textContent = 'Select a customer to include authorized Customer 360 context. Policy and procedure questions use bundled synthetic sources.';
@@ -354,6 +381,7 @@
       try {
         const query = encodeURIComponent(searchInput.value.trim());
         const result = await api(`/api/v1/customers?q=${query}`);
+        if (identityId !== userSelect.value || requestId !== customerSearchRequest) return;
         customerList.replaceChildren();
         if (result.customers.length === 0) {
           customerList.append(makeText('p', 'No customers found in this scope.', 'empty'));
@@ -373,13 +401,17 @@
         const first = customerList.querySelector('button');
         if (first) await loadCustomer(first.dataset.customerId);
       } catch (error) {
+        if (identityId !== userSelect.value || requestId !== customerSearchRequest) return;
         customerList.replaceChildren(makeText('p', error.message, 'error'));
       }
     }
 
     async function loadCustomer(customerId) {
+      const requestId = ++customerLoadRequest;
+      const identityId = userSelect.value;
       try {
         const data = await api(`/api/v1/customers/${encodeURIComponent(customerId)}`);
+        if (identityId !== userSelect.value || requestId !== customerLoadRequest) return;
         selectedCustomerId = customerId;
         document.querySelector('#assistant-context').textContent = `Assistant context: ${data.customer.fullName} (${data.customer.id}) is selected. Access is checked again by the server.`;
         document.querySelectorAll('.customer-option').forEach(button => {
@@ -387,6 +419,7 @@
         });
         renderCustomer(data);
       } catch (error) {
+        if (identityId !== userSelect.value || requestId !== customerLoadRequest) return;
         detail.hidden = false;
         detail.replaceChildren(makeText('p', error.message, 'error'));
       }
@@ -474,6 +507,7 @@
         assign.className = 'inline-form form-actions';
         const assignment = document.createElement('select');
         assignment.name = 'assigneeId';
+        assignment.setAttribute('aria-label', `Assign ${serviceCase.reference} to`);
         assignment.append(option('service-officer', 'Service Officer'));
         const assignButton = makeText('button', 'Assign case');
         assignButton.type = 'submit';
@@ -485,11 +519,17 @@
         const escalate = makeText('button', 'Escalate overdue case');
         escalate.type = 'button';
         escalate.addEventListener('click', async () => {
+          const identityId = userSelect.value;
+          escalate.disabled = true;
           try {
             await api(`/api/v1/cases/${encodeURIComponent(serviceCase.reference)}/escalate`, { method: 'POST', body: new URLSearchParams() });
+            if (identityId !== userSelect.value) return;
             await loadCustomer(selectedCustomerId);
             await loadDashboard();
-          } catch (error) { showMessage(error.message, true); }
+          } catch (error) {
+            if (identityId === userSelect.value) showMessage(error.message, true);
+            escalate.disabled = false;
+          }
         });
         record.append(escalate);
       }
@@ -589,12 +629,14 @@
     }
 
     async function sendForm(path, values, successMessage) {
+      const identityId = userSelect.value;
       try {
         await api(path, { method: 'POST', body: new URLSearchParams(values) });
+        if (identityId !== userSelect.value) return;
         await loadCustomer(selectedCustomerId);
         await loadDashboard();
         showMessage(successMessage, false);
-      } catch (error) { showMessage(error.message, true); }
+      } catch (error) { if (identityId === userSelect.value) showMessage(error.message, true); }
     }
 
     function showMessage(message, isError) {
@@ -625,6 +667,7 @@
       const label = makeText('label', labelText);
       const select = document.createElement('select');
       select.name = name;
+      connectLabel(label, select);
       for (const value of values) select.append(option(value, value ? value.replaceAll('_', ' ') : ''));
       wrapper.append(label, select);
       return wrapper;
@@ -637,6 +680,7 @@
       input.name = name;
       input.maxLength = maxLength;
       input.required = true;
+      connectLabel(label, input);
       wrapper.append(label, input);
       return wrapper;
     }
@@ -648,8 +692,15 @@
       textarea.name = name;
       textarea.maxLength = maxLength;
       textarea.required = true;
+      connectLabel(label, textarea);
       wrapper.append(label, textarea);
       return wrapper;
+    }
+
+    function connectLabel(label, control) {
+      const id = `relasi-field-${++labelSequence}`;
+      label.htmlFor = id;
+      control.id = id;
     }
 
     function formatDate(value) {
@@ -715,7 +766,7 @@
         input.name = name;
         input.maxLength = property.maxLength;
         input.required = required.has(name);
-        input.setAttribute('aria-label', name);
+        connectLabel(label, input);
         if (property.description) input.title = property.description;
         wrapper.append(label, input);
         if (property.maxLength > 120) wrapper.className = 'wide';
@@ -730,17 +781,24 @@
 
     async function invokeTool(event) {
       event.preventDefault();
+      const identityId = userSelect.value;
       const tool = toolDefinitions.find(candidate => candidate.name === toolSelect.value);
       if (!tool) return;
+      const submitButton = toolForm.querySelector('button[type="submit"]');
+      if (submitButton) submitButton.disabled = true;
       toolOutput.replaceChildren(makeText('p', 'Invoking local tool…', 'muted'));
       const values = Object.fromEntries(new FormData(toolForm));
       try {
         const response = await api(`/api/v1/tools/${encodeURIComponent(tool.name)}`, {
           method: 'POST', body: new URLSearchParams(values)
         });
+        if (identityId !== userSelect.value) return;
         renderToolResult(response, tool.name);
       } catch (error) {
+        if (identityId !== userSelect.value) return;
         toolOutput.replaceChildren(makeText('p', error.message, 'error'));
+      } finally {
+        if (submitButton?.isConnected) submitButton.disabled = false;
       }
     }
 
@@ -784,19 +842,26 @@
     }
 
     async function askAssistant() {
+      const identityId = userSelect.value;
       const message = assistantQuestion.value.trim();
       if (!message) {
         assistantResult.replaceChildren(makeText('p', 'Enter a question first.', 'error'));
         return;
       }
       assistantResult.replaceChildren(makeText('p', 'Analyzing with local mock providers…', 'muted'));
+      const askButton = document.querySelector('#ask-assistant');
+      askButton.disabled = true;
       const values = { message };
       if (selectedCustomerId) values.customerId = selectedCustomerId;
       try {
         const response = await api('/api/v1/assistant/respond', { method: 'POST', body: new URLSearchParams(values) });
+        if (identityId !== userSelect.value) return;
         renderAssistantResponse(response);
       } catch (error) {
+        if (identityId !== userSelect.value) return;
         assistantResult.replaceChildren(makeText('p', error.message, 'error'));
+      } finally {
+        askButton.disabled = false;
       }
     }
 
@@ -888,6 +953,8 @@
 
     userSelect.addEventListener('change', () => {
       updateResetButton();
+      assistantResult.replaceChildren();
+      toolOutput.replaceChildren();
       searchCustomers();
       loadDashboard();
     });
@@ -900,7 +967,13 @@
       toolOutput.replaceChildren(makeText('p', error.message, 'error'));
     }));
     toolForm.addEventListener('submit', invokeTool);
-    loadUsers().catch(error => { customerList.replaceChildren(makeText('p', error.message, 'error')); });
+    loadUsers().catch(error => {
+      customerList.replaceChildren(makeText('p', error.message, 'error'));
+      document.querySelector('#dashboard-metrics').setAttribute('aria-busy', 'false');
+      document.querySelector('#dashboard-metrics').replaceChildren(makeText('p', error.message, 'error'));
+      document.querySelector('#knowledge-documents').replaceChildren(makeText('p', error.message, 'error'));
+      toolOutput.replaceChildren(makeText('p', error.message, 'error'));
+    });
   </script>
 </body>
 </html>

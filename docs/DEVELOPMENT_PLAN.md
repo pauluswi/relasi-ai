@@ -160,6 +160,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Accessibility and error-handling slice:** Added explicit label/control associations for generated forms, visible keyboard focus, reduced-motion handling, busy/status announcements, clearer local server/network errors, and disabled submission states. Customer, dashboard, assistant, and tool responses are discarded if they return after the demo identity changes, preventing stale scoped data from appearing under another selected identity. Screen-reader and browser verification remain pending.
 
+**Operational diagnostics slice:** Every response now carries a generated `X-Request-ID`; local request logs include only the ID, method, status, and duration. UI API errors show that ID so a demo operator can find the matching entry without logging request bodies or customer content.
+
 ### Optional M8 — Sales and campaign features
 
 Add synthetic leads, opportunities, campaigns, campaign responses, and product recommendations after the core CRM + AI showcase is stable. Keep recommendations advisory and fixture-backed.

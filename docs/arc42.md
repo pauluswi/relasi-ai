@@ -269,6 +269,8 @@ This topology is implemented in one process: the JDK HTTP server serves the bund
 - Track AI execution stages and durations for the authorized trace view.
 - Separate provider failures, validation failures, authorization denials, and business-rule errors.
 
+The local runtime generates an ID for each HTTP request, returns it in `X-Request-ID`, and logs only the ID, method, status, and duration. The UI includes the ID in API errors; request bodies and customer content are not written to the console log.
+
 ### 8.5 Persistence and Integration Boundaries
 
 - Keep persistence mappings and vendor-specific DTOs out of domain use cases.

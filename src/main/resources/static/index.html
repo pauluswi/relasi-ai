@@ -213,7 +213,11 @@
       }
       let payload = {};
       try { payload = (await response.json()) || {}; } catch { /* Use the HTTP status message below. */ }
-      if (!response.ok) throw new Error(payload?.message || payload?.error || `The local server returned HTTP ${response.status}.`);
+      if (!response.ok) {
+        const requestId = response.headers.get('X-Request-ID');
+        const message = payload?.message || payload?.error || `The local server returned HTTP ${response.status}.`;
+        throw new Error(requestId ? `${message} (request ${requestId})` : message);
+      }
       return payload;
     }
 
@@ -221,7 +225,7 @@
       let response;
       try { response = await fetch('/api/v1/demo-users'); }
       catch { throw new Error('Cannot reach the local RELASI AI server. Confirm that ./run.sh is running.'); }
-      if (!response.ok) throw new Error(`Could not load demo identities (HTTP ${response.status}).`);
+      if (!response.ok) throw new Error(`Could not load demo identities (HTTP ${response.status}, request ${response.headers.get('X-Request-ID') || 'unknown'}).`);
       const payload = await response.json();
       for (const user of payload.users) demoRoles[user.id] = user.role;
       for (const user of payload.users) {
@@ -947,9 +951,12 @@
     }
 
     fetch('/api/v1/health')
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) throw new Error(response.headers.get('X-Request-ID') || 'unknown');
+        return response.json();
+      })
       .then(data => { healthBadge.textContent = `Local runtime ${data.status} · ${data.crmAdapter} mock CRM`; })
-      .catch(() => { healthBadge.textContent = 'Local runtime unavailable'; });
+      .catch(error => { healthBadge.textContent = `Local runtime unavailable · request ${error.message}`; });
 
     userSelect.addEventListener('change', () => {
       updateResetButton();

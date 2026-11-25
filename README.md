@@ -68,6 +68,8 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 
 Write endpoints accept `application/x-www-form-urlencoded` fields. The assistant also prepares a case preview when asked with an imperative such as “Create a high-priority complaint case for this customer.” No case is created until the user confirms that exact preview. The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; customer profile changes are not implemented.
 
+Every server response includes an `X-Request-ID` header. The local console logs the request ID, method, status, and duration without logging request content; the UI includes the ID in API error messages to help locate the matching log entry.
+
 ### Demo identities
 
 | Identity | Role | Customer scope |

@@ -28,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -104,10 +105,18 @@ public final class RelasiAiApplication {
     }
 
     private static void handle(HttpExchange exchange) throws IOException {
+        String requestId = UUID.randomUUID().toString();
+        exchange.setAttribute("requestId", requestId);
+        exchange.setAttribute("requestStartedNanos", System.nanoTime());
         try {
             route(exchange);
         } catch (IllegalArgumentException exception) {
             badRequest(exchange, "Malformed request encoding.");
+        } catch (RuntimeException exception) {
+            System.err.printf("requestId=%s failure=%s%n", requestId, exception.getClass().getSimpleName());
+            send(exchange, 500, "application/json; charset=utf-8",
+                    CrmJson.stringify(Map.of("error", "internal_error", "message", "Unexpected local server error. Use the request ID to locate the server log entry.",
+                            "requestId", requestId)));
         }
     }
 
@@ -834,13 +843,18 @@ public final class RelasiAiApplication {
 
     private static void send(HttpExchange exchange, int status, String contentType, String body) throws IOException {
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        String requestId = String.valueOf(exchange.getAttribute("requestId"));
         exchange.getResponseHeaders().set("Content-Type", contentType);
         exchange.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
         exchange.getResponseHeaders().set("Cache-Control", "no-store");
+        exchange.getResponseHeaders().set("X-Request-ID", requestId);
         exchange.sendResponseHeaders(status, bytes.length);
         try (var output = exchange.getResponseBody()) {
             output.write(bytes);
         }
+        long startedAt = (long) exchange.getAttribute("requestStartedNanos");
+        System.out.printf("requestId=%s method=%s status=%d durationMs=%d%n", requestId,
+                exchange.getRequestMethod(), status, Math.max(0, (System.nanoTime() - startedAt) / 1_000_000));
     }
 }
 

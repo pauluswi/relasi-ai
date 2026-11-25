@@ -16,6 +16,7 @@ RELASI AI is planned as an enterprise CRM demonstration combining customer and c
 - Scoped customer search and a consolidated Customer 360 profile with synthetic contacts, products, interactions, and case snapshots.
 - A scoped analytics dashboard with customer and service KPIs, portfolio mix, case health, follow-up priorities, and recent activity.
 - Service cases, assignments, SLA escalation, history, and customer interactions.
+- A scope-limited service case queue with search, status/priority filters, and SLA attention indicators.
 - Deterministic mock AI and NLP for customer service inquiries.
 - Local synthetic banking knowledge retrieval with source references and abstention when evidence is missing, plus advisory next-best-action suggestions grounded in scoped customer evidence.
 - MCP-compatible tool discovery and execution through an in-process registry.

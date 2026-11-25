@@ -131,7 +131,7 @@ The diagram shows target boundaries. The implemented mock profile includes the l
 
 | Module | Responsibility | Key interfaces / data |
 |---|---|---|
-| Showcase UI | Scope-aware customer search, Customer 360, analytics dashboard, case workflows, assistant, knowledge library, and MCP tool explorer | Bundled HTML/CSS/JavaScript served by the local application |
+| Showcase UI | Responsive workspace shell with identity/runtime top bar, section navigation, scope-aware customer search, analytics dashboard, case workflows, assistant, knowledge library, and MCP tool registry | Bundled HTML/CSS/JavaScript served by the local application |
 | API and identity | REST boundary, authentication, authorization, request validation, API error mapping | REST resources; authenticated principal and role scope |
 | Customer | Customer profile, segmentation, status, preferences, risk indicators, Customer 360 assembly | Customer and contact use cases; customer identifiers |
 | Case management | Case creation, assignment, category, priority, status, SLA, history, resolution | Case commands and queries; write authorization |

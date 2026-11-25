@@ -146,6 +146,30 @@
     .queue-badge.high { color: #91510d; background: #fff0d7; }
     .queue-badge.normal { color: #38624e; background: #e3f4e9; }
     .queue-badge.low { color: #4f6470; background: #edf1f3; }
+    .section-hero { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin: 0 0 .9rem; padding: 1.25rem 1.4rem; border-radius: 15px; color: white; background: linear-gradient(115deg, #163c50, #23796f); }
+    .section-hero h2 { margin: 0; font-size: 1.35rem; }
+    .section-hero p { margin: .35rem 0 0; color: #d7ebe5; }
+    .section-hero .badge { color: #15544d; background: #d9f2e8; }
+    .contact-filters { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(150px, .4fr); gap: .7rem; margin: 1rem 0; }
+    .data-table-wrap { overflow-x: auto; border: 1px solid #e1e7ee; border-radius: 10px; }
+    .data-table { width: 100%; min-width: 680px; border-collapse: collapse; background: white; font-size: .84rem; }
+    .data-table th { padding: .7rem .75rem; background: #f4f7f6; color: #66747d; text-align: left; font-size: .69rem; letter-spacing: .06em; text-transform: uppercase; }
+    .data-table td { padding: .75rem; border-top: 1px solid #edf0f2; vertical-align: top; }
+    .data-table td strong, .data-table td small { display: block; }
+    .data-table td small { margin-top: .2rem; color: #75818a; }
+    .admin-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+    .admin-card { min-width: 0; border: 1px solid #dce4ed; border-radius: 12px; padding: 1rem; background: #fff; }
+    .admin-card h3 { margin: 0 0 .75rem; }
+    .admin-list { display: grid; gap: .55rem; }
+    .admin-row { display: flex; justify-content: space-between; gap: .7rem; padding-top: .55rem; border-top: 1px solid #edf0f2; font-size: .82rem; }
+    .admin-row:first-child { border-top: 0; padding-top: 0; }
+    .admin-row span:last-child { color: #63717d; text-align: right; }
+    .pipeline { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+    .pipeline-column { min-height: 165px; padding: .85rem; border-radius: 11px; background: #f5f8f7; border: 1px solid #e1e9e5; }
+    .pipeline-column h3 { display: flex; justify-content: space-between; margin: 0 0 .7rem; font-size: .87rem; }
+    .pipeline-card { margin-top: .55rem; padding: .7rem; border: 1px solid #e1e7ee; border-radius: 9px; background: white; font-size: .8rem; }
+    .pipeline-card strong, .pipeline-card small { display: block; }
+    .pipeline-card small { margin-top: .3rem; color: #71808a; }
     .queue-badge.overdue { color: #9b3028; background: #fde9e6; }
     .case-queue-table button { width: auto; padding: .42rem .62rem; font-size: .75rem; white-space: nowrap; }
     .reset-feedback { position: absolute; top: calc(100% + .25rem); right: 1.25rem; z-index: 3; margin: 0; color: #8a371f; background: #fff4eb; border-radius: 7px; padding: .35rem .55rem; font-size: .75rem; box-shadow: 0 3px 12px #172b3a18; }
@@ -174,6 +198,9 @@
       .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .dashboard-panels, .dashboard-lower { grid-template-columns: 1fr; }
       .dashboard-hero { align-items: start; flex-direction: column; }
+      .admin-grid { grid-template-columns: 1fr; }
+      .pipeline { grid-template-columns: 1fr; }
+      .contact-filters { grid-template-columns: 1fr; }
     }
     @media (max-width: 420px) { .chart-row { grid-template-columns: 95px minmax(45px, 1fr) 1.5rem; gap: .4rem; font-size: .75rem; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
@@ -199,10 +226,13 @@
       <nav aria-label="Main navigation">
         <a class="nav-link" href="#overview" aria-current="page"><span class="nav-number">01</span>Overview</a>
         <a class="nav-link" href="#customers"><span class="nav-number">02</span>Customers</a>
-        <a class="nav-link" href="#cases"><span class="nav-number">03</span>Cases</a>
-        <a class="nav-link" href="#assistant"><span class="nav-number">04</span>AI assistant</a>
-        <a class="nav-link" href="#knowledge"><span class="nav-number">05</span>Knowledge</a>
-        <a class="nav-link" href="#tools"><span class="nav-number">06</span>Tool registry</a>
+        <a class="nav-link" href="#contacts"><span class="nav-number">03</span>Contacts</a>
+        <a class="nav-link" href="#cases"><span class="nav-number">04</span>Cases</a>
+        <a class="nav-link" href="#sales"><span class="nav-number">05</span>Sales &amp; campaigns</a>
+        <a class="nav-link" href="#assistant"><span class="nav-number">06</span>AI assistant</a>
+        <a class="nav-link" href="#knowledge"><span class="nav-number">07</span>Knowledge</a>
+        <a class="nav-link" href="#tools"><span class="nav-number">08</span>Tool registry</a>
+        <a class="nav-link" href="#administration"><span class="nav-number">09</span>Administration</a>
       </nav>
       <div class="sidebar-foot"><strong>SYNTHETIC WORKSPACE</strong><small>Records stay local to this application and reset when it restarts.</small></div>
     </aside>
@@ -240,6 +270,11 @@
     </section>
     <section id="customer-detail" class="card" hidden aria-live="polite"></section>
     </section>
+    <section id="contacts" class="card" aria-labelledby="contacts-title">
+      <div class="section-hero"><div><h2 id="contacts-title">Contact directory</h2><p>People associated with customer relationships in your scope</p></div><span class="badge" id="contact-total">Loading…</span></div>
+      <div class="contact-filters"><div><label for="contact-search">Search contacts</label><input id="contact-search" type="search" placeholder="Name, customer, email, or relationship" autocomplete="off"></div><div><label for="contact-channel">Preferred channel</label><select id="contact-channel"><option value="ALL">All channels</option><option value="EMAIL">Email</option><option value="TELEPHONE">Telephone</option><option value="MOBILE_BANKING">Mobile banking</option><option value="BRANCH">Branch</option></select></div></div>
+      <div id="contact-directory" aria-live="polite"><p class="muted">Loading scoped contacts…</p></div>
+    </section>
     <section id="cases" class="card" aria-labelledby="case-queue-title">
       <div class="panel-heading"><div><h2 id="case-queue-title">Service case queue</h2><p>Prioritized cases within the selected identity's customer scope</p></div><span class="badge" id="case-queue-total">Loading…</span></div>
       <div class="dashboard-grid queue-metrics" id="case-queue-metrics" aria-live="polite"></div>
@@ -249,6 +284,16 @@
         <div><label for="case-queue-priority">Priority</label><select id="case-queue-priority"><option value="ALL">All priorities</option><option value="HIGH">High</option><option value="NORMAL">Normal</option><option value="LOW">Low</option></select></div>
       </div>
       <div id="case-queue-content" aria-live="polite"><p class="muted">Loading scoped case records…</p></div>
+    </section>
+    <section id="sales" class="card" aria-labelledby="sales-title">
+      <div class="section-hero"><div><h2 id="sales-title">Sales &amp; campaigns</h2><p>Relationship opportunities and campaign activity</p></div><span class="badge">Illustrative mock workspace</span></div>
+      <p class="muted">This UI previews the planned sales workflow with synthetic examples. Leads, opportunity updates, campaign enrollment, and response tracking are not connected to write APIs yet.</p>
+      <div class="dashboard-grid" id="sales-metrics"></div>
+      <div class="pipeline" id="sales-pipeline" aria-label="Illustrative opportunity pipeline"></div>
+      <div class="dashboard-panels" style="margin-top: .9rem">
+        <section class="dashboard-panel" aria-labelledby="campaign-list-title"><div class="panel-heading"><div><h3 id="campaign-list-title">Campaigns</h3><p>Sample engagement programs</p></div></div><div id="campaign-list" class="dashboard-list"></div></section>
+        <section class="dashboard-panel" aria-labelledby="campaign-response-title"><div class="panel-heading"><div><h3 id="campaign-response-title">Recent responses</h3><p>Synthetic engagement signals</p></div></div><div id="campaign-responses" class="dashboard-list"></div></section>
+      </div>
     </section>
     <section id="assistant" class="card" aria-labelledby="assistant-title">
       <h2 id="assistant-title">AI assistant <span class="badge">Advisory workspace</span></h2>
@@ -273,6 +318,16 @@
       <form id="tool-form" class="form-grid"></form>
       <div id="tool-output" aria-live="polite"></div>
     </section>
+    <section id="administration" class="card" aria-labelledby="admin-title">
+      <div class="section-hero"><div><h2 id="admin-title">Workspace administration</h2><p>Local runtime, demo access, integrations, and audit visibility</p></div><button id="refresh-admin" type="button" style="width:auto">Refresh status</button></div>
+      <p class="muted">This showcase uses seeded demo identities. The identity selector is a local access simulation, not production authentication or user administration.</p>
+      <div class="admin-grid">
+        <section class="admin-card"><h3>Runtime &amp; integrations</h3><div class="admin-list" id="admin-runtime"><p class="muted">Loading runtime status…</p></div></section>
+        <section class="admin-card"><h3>Current identity &amp; scope</h3><div class="admin-list" id="admin-identity"><p class="muted">Loading identity…</p></div></section>
+        <section class="admin-card"><h3>Recent audit activity</h3><div class="admin-list" id="admin-audit"><p class="muted">Supervisor or administrator access is required to view audit events.</p></div></section>
+        <section class="admin-card"><h3>Demo data controls</h3><p class="muted">Restore seeded cases and interactions, clear pending write confirmations, and start a fresh audit history.</p><div id="admin-reset-state" class="admin-list"></div><button id="admin-reset" type="button" style="margin-top:.7rem">Reset demo data</button></section>
+      </div>
+    </section>
     </main>
   </div>
   <script>
@@ -292,6 +347,9 @@
     const caseQueueMetrics = document.querySelector('#case-queue-metrics');
     let caseQueueRows = [];
     let caseQueueRequest = 0;
+    let contactRequest = 0;
+    let adminRequest = 0;
+    let contactRows = [];
     let toolDefinitions = [];
     const demoRoles = {};
     let selectedCustomerId = '';
@@ -336,6 +394,9 @@
       await searchCustomers();
       await loadDashboard();
       await loadCaseQueue();
+      await loadContacts();
+      await loadAdministration();
+      renderSalesWorkspace();
       await loadKnowledgeDocuments();
       await loadTools().catch(error => toolOutput.replaceChildren(makeText('p', error.message, 'error')));
     }
@@ -461,6 +522,161 @@
         document.querySelector('#case-queue-total').textContent = 'Unavailable';
         caseQueueMetrics.replaceChildren();
       }
+    }
+
+    async function loadContacts() {
+      const requestId = ++contactRequest;
+      const identityId = userSelect.value;
+      const directory = document.querySelector('#contact-directory');
+      directory.replaceChildren(makeText('p', 'Loading scoped contacts…', 'muted'));
+      try {
+        const { customers } = await api('/api/v1/customers');
+        const profiles = await Promise.all(customers.map(customer => api(`/api/v1/customers/${encodeURIComponent(customer.id)}`)));
+        if (identityId !== userSelect.value || requestId !== contactRequest) return;
+        const rows = profiles.flatMap(profile => profile.contacts.map(contact => ({ ...contact, customer: profile.customer })));
+        contactRows = rows;
+        document.querySelector('#contact-total').textContent = `${rows.length} contacts`;
+        renderContacts(rows);
+      } catch (error) {
+        if (identityId !== userSelect.value || requestId !== contactRequest) return;
+        directory.replaceChildren(makeText('p', error.message, 'error'));
+        document.querySelector('#contact-total').textContent = 'Unavailable';
+      }
+    }
+
+    function renderContacts(rows) {
+      const query = document.querySelector('#contact-search').value.trim().toLowerCase();
+      const channel = document.querySelector('#contact-channel').value;
+      const filtered = rows.filter(contact => {
+        const text = [contact.fullName, contact.relationship, contact.email, contact.mobile, contact.customer.fullName, contact.customer.id].join(' ').toLowerCase();
+        return (!query || text.includes(query)) && (channel === 'ALL' || contact.preferredChannel === channel);
+      });
+      const directory = document.querySelector('#contact-directory');
+      directory.replaceChildren();
+      if (!filtered.length) {
+        directory.append(makeText('p', 'No contacts match these filters in your authorized scope.', 'empty'));
+        return;
+      }
+      const wrapper = makeText('div', '', 'data-table-wrap');
+      const table = makeText('table', '', 'data-table');
+      const head = document.createElement('thead');
+      const header = document.createElement('tr');
+      for (const title of ['Contact', 'Customer', 'Relationship', 'Contact details', 'Preferred channel']) header.append(makeText('th', title));
+      head.append(header);
+      const body = document.createElement('tbody');
+      for (const contact of filtered) {
+        const row = document.createElement('tr');
+        const name = document.createElement('td'); name.append(makeText('strong', contact.fullName), makeText('small', contact.id));
+        const customer = document.createElement('td'); customer.append(makeText('strong', contact.customer.fullName), makeText('small', contact.customer.id));
+        const relationship = makeText('td', contact.relationship.replaceAll('_', ' '));
+        const details = document.createElement('td'); details.append(makeText('span', contact.email), makeText('small', contact.mobile));
+        const preferred = makeText('td', contact.preferredChannel.replaceAll('_', ' '));
+        row.append(name, customer, relationship, details, preferred);
+        body.append(row);
+      }
+      table.append(head, body);
+      wrapper.append(table);
+      directory.append(wrapper);
+    }
+
+    function renderSalesWorkspace() {
+      const opportunities = [
+        { name: 'Priority relationship review', customer: 'In-scope retail customer A', stage: 'QUALIFICATION', value: 'IDR 180m', owner: 'Relationship Manager' },
+        { name: 'Home financing discussion', customer: 'In-scope retail customer B', stage: 'PROPOSAL', value: 'IDR 650m', owner: 'Relationship Manager' },
+        { name: 'Business banking review', customer: 'In-scope business customer', stage: 'DISCOVERY', value: 'IDR 240m', owner: 'Relationship Manager' },
+        { name: 'Card upgrade follow-up', customer: 'In-scope retail customer C', stage: 'CLOSED_WON', value: 'IDR 36m', owner: 'Relationship Manager' }
+      ];
+      const columns = [
+        ['DISCOVERY', 'Discovery'], ['QUALIFICATION', 'Qualification'], ['PROPOSAL', 'Proposal'], ['CLOSED_WON', 'Closed won']
+      ];
+      const totals = [
+        ['Open opportunities', opportunities.filter(item => item.stage !== 'CLOSED_WON').length, 'Illustrative pipeline records'],
+        ['Pipeline value', 'IDR 1.07bn', 'Synthetic opportunity estimates'],
+        ['Active campaigns', 2, 'Sample campaign programs'],
+        ['Engagement rate', '38%', 'Illustrative response metric']
+      ];
+      document.querySelector('#sales-metrics').replaceChildren(...totals.map(([label, value, foot]) => {
+        const card = makeText('article', '', 'metric-card');
+        card.append(makeText('span', label, 'metric-label'), makeText('strong', value, 'metric-value'), makeText('p', foot, 'metric-foot'));
+        return card;
+      }));
+      const pipeline = document.querySelector('#sales-pipeline');
+      pipeline.replaceChildren();
+      for (const [stage, label] of columns) {
+        const items = opportunities.filter(opportunity => opportunity.stage === stage);
+        const column = makeText('section', '', 'pipeline-column');
+        const heading = makeText('h3', ''); heading.append(document.createTextNode(label), makeText('span', String(items.length), 'badge'));
+        column.append(heading);
+        if (!items.length) column.append(makeText('p', 'No sample opportunities', 'muted'));
+        for (const item of items) {
+          const card = makeText('article', '', 'pipeline-card');
+          card.append(makeText('strong', item.name), makeText('small', `${item.customer} · ${item.value}`), makeText('small', item.owner));
+          column.append(card);
+        }
+        pipeline.append(column);
+      }
+      const campaigns = [
+        ['Everyday banking check-in', 'CUSTOMER RETENTION · 128 invited · 42 responses'],
+        ['Digital banking adoption', 'DIGITAL ENGAGEMENT · 96 invited · 31 responses']
+      ];
+      const campaignContainer = document.querySelector('#campaign-list'); campaignContainer.replaceChildren();
+      for (const [title, summary] of campaigns) {
+        const row = makeText('article', '', 'dashboard-row');
+        row.append(makeText('strong', title), makeText('small', summary)); campaignContainer.append(row);
+      }
+      const responses = [
+        ['Customer contact A', 'Requested a relationship review · Email'],
+        ['Customer contact B', 'Opened the digital banking guide · Mobile banking'],
+        ['Customer contact C', 'Asked for a product consultation · Telephone']
+      ];
+      const responseContainer = document.querySelector('#campaign-responses'); responseContainer.replaceChildren();
+      for (const [name, summary] of responses) {
+        const row = makeText('article', '', 'dashboard-row'); row.append(makeText('strong', name), makeText('small', summary)); responseContainer.append(row);
+      }
+    }
+
+    async function loadAdministration() {
+      const requestId = ++adminRequest;
+      const identityId = userSelect.value;
+      const runtime = document.querySelector('#admin-runtime');
+      const identity = document.querySelector('#admin-identity');
+      const audit = document.querySelector('#admin-audit');
+      const resetState = document.querySelector('#admin-reset-state');
+      runtime.replaceChildren(makeText('p', 'Loading runtime status…', 'muted'));
+      identity.replaceChildren(makeText('p', 'Loading identity…', 'muted'));
+      const role = demoRoles[identityId] || '';
+      const canManage = ['CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(role);
+      document.querySelector('#admin-reset').disabled = !canManage;
+      resetState.replaceChildren(makeText('p', canManage ? 'Reset is available for this role.' : 'Reset requires supervisor or administrator access.', 'muted'));
+      try {
+        const [health, session] = await Promise.all([fetch('/api/v1/health').then(response => response.json()), api('/api/v1/session')]);
+        if (identityId !== userSelect.value || requestId !== adminRequest) return;
+        runtime.replaceChildren();
+        for (const [label, value] of [['Application', health.status], ['Run mode', health.mode], ['Storage', health.storage], ['CRM profile', health.crmAdapter], ['AI provider', 'Deterministic local mock'], ['Knowledge', 'Bundled local corpus']]) runtime.append(adminRow(label, value));
+        identity.replaceChildren();
+        identity.append(adminRow('Name', session.user.displayName), adminRow('Role', session.user.role.replaceAll('_', ' ')), adminRow('Authentication', 'Local demo identity'), adminRow('Customer scope', session.customerScope.join(', ') || 'None'));
+        if (canManage) {
+          const result = await api('/api/v1/audit');
+          if (identityId !== userSelect.value || requestId !== adminRequest) return;
+          audit.replaceChildren();
+          const events = result.events.slice(-8).reverse();
+          if (!events.length) audit.append(makeText('p', 'No audit events in the current in-memory history.', 'muted'));
+          for (const event of events) audit.append(adminRow(`${event.action} · ${event.actorId}`, `${formatDate(event.occurredAt)} · ${event.outcome}`));
+        } else {
+          audit.replaceChildren(makeText('p', 'Audit events are limited to supervisors and administrators.', 'muted'));
+        }
+      } catch (error) {
+        if (identityId !== userSelect.value || requestId !== adminRequest) return;
+        runtime.replaceChildren(makeText('p', error.message, 'error'));
+        identity.replaceChildren(makeText('p', error.message, 'error'));
+        audit.replaceChildren(makeText('p', canManage ? error.message : 'Audit events are limited to supervisors and administrators.', canManage ? 'error' : 'muted'));
+      }
+    }
+
+    function adminRow(label, value) {
+      const row = makeText('div', '', 'admin-row');
+      row.append(makeText('strong', label), makeText('span', String(value)));
+      return row;
     }
 
     function renderCaseQueue() {
@@ -1182,6 +1398,8 @@
       searchCustomers();
       loadDashboard();
       loadCaseQueue();
+      loadContacts();
+      loadAdministration();
     });
     const navigationLinks = [...document.querySelectorAll('.nav-link')];
     let pendingNavigationLink = null;
@@ -1227,6 +1445,10 @@
       else updateNavigationFromScroll();
     });
     resetButton.addEventListener('click', resetDemoState);
+    document.querySelector('#admin-reset').addEventListener('click', resetDemoState);
+    document.querySelector('#refresh-admin').addEventListener('click', loadAdministration);
+    document.querySelector('#contact-search').addEventListener('input', () => renderContacts(contactRows));
+    document.querySelector('#contact-channel').addEventListener('change', () => renderContacts(contactRows));
     document.querySelector('#search-button').addEventListener('click', searchCustomers);
     searchInput.addEventListener('keydown', event => { if (event.key === 'Enter') searchCustomers(); });
     document.querySelector('#case-queue-search').addEventListener('input', renderCaseQueue);

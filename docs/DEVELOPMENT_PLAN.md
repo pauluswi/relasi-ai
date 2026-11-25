@@ -166,9 +166,11 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Case queue slice:** Added a dedicated navigation destination with scope-limited case counts, active/overdue summaries, customer/reference/subject search, status and priority filters, SLA highlighting, and a link to each in-scope Customer 360 profile.
 
+**Broader workspace UI slice:** Added a standalone contact directory that composes contacts only from customer profiles visible to the selected identity, with search and preferred-channel filtering. Added a synthetic sales and campaign dashboard preview for pipeline, programs, and responses; it is explicitly illustrative because lead/opportunity/campaign APIs and mutable records are not implemented. Added a workspace administration screen for runtime and CRM profile status, current local demo identity and scope, supervisor/admin-only audit history, and the existing role-gated reset action. These UI destinations do not change the no-database/no-external-services run mode.
+
 ### Optional M8 — Sales and campaign features
 
-Add synthetic leads, opportunities, campaigns, campaign responses, and product recommendations after the core CRM + AI showcase is stable. Keep recommendations advisory and fixture-backed.
+The M7 UI preview now provides a visual destination for pipeline, campaigns, and responses. Add synthetic leads, opportunities, campaign records, mutable workflows, and product recommendations after the core CRM + AI showcase is stable. Keep recommendations advisory and fixture-backed.
 
 ## 5. Demonstration Scenario Mapping
 

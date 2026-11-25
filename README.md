@@ -25,6 +25,52 @@ RELASI AI is planned as an enterprise CRM demonstration combining customer and c
 
 All banking records and payment information are synthetic. The project does not connect to real banking systems, execute payments, or require a live AI provider.
 
+## Architecture diagram
+
+The showcase runs as one local Java process. Its UI, API, mock CRM profiles, AI workflows, and synthetic data stay inside the application; no database, Docker, or external service is required.
+
+```mermaid
+flowchart LR
+    Staff[CRM staff] --> Browser[Bundled web workspace]
+    Browser -->|Local HTTP API| App[JDK HTTP server and application]
+    subgraph LocalProcess[Single local process]
+        App --> Access[Demo identity and customer scope]
+        App --> CRM[CRM and case workflows]
+        App --> Assistant[AI assistant and NLP]
+        Assistant --> RAG[Local knowledge retrieval]
+        Assistant --> Tools[In-process MCP-compatible tools]
+        CRM --> Adapters[CRM adapter contract]
+        Adapters --> Dynamics[Dynamics-style mock]
+        Adapters --> Salesforce[Salesforce-style mock]
+        CRM --> State[(Synthetic in-memory data)]
+        Tools --> CRM
+        Assistant --> Trace[Execution trace and audit]
+    end
+```
+
+## AI capabilities
+
+- **Customer context:** Summarizes an authorized customer's profile, products, interactions, and cases from the synthetic CRM fixture set.
+- **Inquiry understanding:** Classifies service intent and sentiment and extracts details from a payment complaint using deterministic local NLP.
+- **Grounded knowledge answers:** Searches the bundled banking guidance, returns source references, and abstains when available evidence is insufficient.
+- **Next-best-action advice:** Suggests a follow-up based on scoped customer and case evidence, with relevant guidance as support.
+- **Case discovery:** Finds unresolved payment complaints visible within the selected demo user's customer scope.
+- **Controlled tool use:** Discovers and invokes MCP-compatible tools; write actions require an authorized user's explicit confirmation and are audited.
+- **Inspectable execution:** Shows processing steps and request identifiers to help staff understand how an answer was assembled.
+
+All AI behavior in the default showcase is deterministic and local. Recommendations are advisory; the assistant does not execute payments or contact customers.
+
+## Business benefits demonstrated
+
+- **Faster service preparation:** A consolidated customer view and relationship summary reduce the effort needed to gather context before responding.
+- **More consistent complaint handling:** Intent and detail extraction give staff a repeatable starting point for triage and case creation.
+- **Easier access to guidance:** Cited knowledge answers help staff locate relevant procedures and see the evidence behind a response.
+- **Clearer follow-up priorities:** Case aggregation and next-action suggestions surface unresolved issues for staff review.
+- **Safer assisted operations:** Scope checks, human confirmation, and audit records demonstrate controls around AI-assisted changes.
+- **Lower-friction evaluation:** Offline mocks and seeded data make these workflows repeatable without infrastructure or external accounts.
+
+These are showcase benefits, not measured production outcomes.
+
 ## Quick start
 
 Requirements: JDK 25 (both `java` and `javac`). No Maven, Node.js, database, Docker, credentials, or network connection is needed.

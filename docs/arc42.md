@@ -55,7 +55,7 @@ The following constraints come from the requirements or the initial project base
 - The target baseline is Java 25 and a single local application process. A bundled UI may use Angular/TypeScript if it can be built and served without a separate runtime service. REST-style APIs and MCP-compatible schemas may be used inside the application.
 - Persistent storage, Docker, external model/CRM/identity services, and a separate MCP server are not part of the primary showcase run mode. In-memory repositories, local fixtures, deterministic mock providers, and an in-process tool registry are the default.
 - The expected delivery includes API and architecture documentation, conceptual data model, MCP tool specifications, synthetic data, automated tests, and demonstration scenarios. A deployed database schema is not required for the mock-only profile.
-- The repository currently has a minimal Java 25 Maven project and requirements document; application code and UI are not yet present. The architecture below is therefore a proposed target, not a description of implemented behavior.
+- The implemented showcase is a Java 25, single-process application with a bundled static UI and in-memory synthetic data. This document describes both the implemented mock profile and longer-term target boundaries; it does not imply production banking integration.
 
 ## 3. System Scope and Context
 
@@ -125,12 +125,13 @@ flowchart TB
     AI --> DB
 ```
 
-The diagram is the target logical structure. The implementation currently includes the local HTTP shell, demo identity directory, provider-neutral CRM read contract, deterministic Customer 360 fixtures, scoped search/profile endpoints, in-memory case/interaction workflows with audit history, a deterministic mock assistant/NLP path, bundled lexical RAG, and an in-process MCP-compatible registry with confirmed writes. Customer profile writes and remote MCP transport remain outside the current scope.
+The diagram shows target boundaries. The implemented mock profile includes the local HTTP shell, demo identity directory, provider-neutral CRM read contract, deterministic Customer 360 fixtures, scope-aware search/profile and analytics dashboard, in-memory case/interaction workflows with audit history, deterministic assistant/NLP, bundled lexical RAG, and an in-process MCP-compatible registry with confirmed writes. Customer profile writes and remote MCP transport remain outside the current scope.
 
 ### 5.2 Level 2 — Backend Modules
 
 | Module | Responsibility | Key interfaces / data |
 |---|---|---|
+| Showcase UI | Scope-aware customer search, Customer 360, analytics dashboard, case workflows, assistant, knowledge library, and MCP tool explorer | Bundled HTML/CSS/JavaScript served by the local application |
 | API and identity | REST boundary, authentication, authorization, request validation, API error mapping | REST resources; authenticated principal and role scope |
 | Customer | Customer profile, segmentation, status, preferences, risk indicators, Customer 360 assembly | Customer and contact use cases; customer identifiers |
 | Case management | Case creation, assignment, category, priority, status, SLA, history, resolution | Case commands and queries; write authorization |

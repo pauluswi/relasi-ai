@@ -154,6 +154,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Implemented slice:** `./run.sh` now reports missing or unsupported JDK versions with an actionable message; invalid port configuration is reported clearly, and an occupied port suggests changing `RELASI_PORT`. Supervisors and administrators can reset mutable in-memory cases, interactions, pending confirmations, and audit history to seeded state from the UI. README documentation now lists demo identities/scopes, adapter and port configuration, sample prompts, expected outcomes, and common startup/access troubleshooting. Automated tests, fresh-checkout scenario verification, accessibility review, and performance review remain pending.
 
+**Dashboard slice:** The bundled UI provides a responsive, scope-aware operational dashboard with customer/case/interaction KPIs, case-status and customer-segment charts, a prioritized active-case queue, and recent interactions. It reads only through existing authorization-checked endpoints and refreshes after identity changes and case/interaction writes. The data is synthetic and calculated in the browser; no analytics service or external chart library is required.
+
 ### Optional M8 — Sales and campaign features
 
 Add synthetic leads, opportunities, campaigns, campaign responses, and product recommendations after the core CRM + AI showcase is stable. Keep recommendations advisory and fixture-backed.

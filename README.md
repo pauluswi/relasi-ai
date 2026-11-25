@@ -14,6 +14,7 @@ RELASI AI is planned as an enterprise CRM demonstration combining customer and c
 ## What the showcase will demonstrate
 
 - Scoped customer search and a consolidated Customer 360 profile with synthetic contacts, products, interactions, and case snapshots.
+- A scoped analytics dashboard with customer and service KPIs, portfolio mix, case health, follow-up priorities, and recent activity.
 - Service cases, assignments, SLA escalation, history, and customer interactions.
 - Deterministic mock AI and NLP for customer service inquiries.
 - Local synthetic banking knowledge retrieval with source references and abstention when evidence is missing.

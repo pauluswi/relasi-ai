@@ -49,7 +49,37 @@ public final class AssistantService {
         boolean grounded = false;
         boolean abstained = false;
         String answer;
-        if (knowledgeQuestion) {
+        String provider = llmProvider.providerId();
+        if (isNextBestActionQuestion(message)) {
+            provider = "DETERMINISTIC_NBA_RULES";
+            if (customerContext == null) {
+                answer = "Select an in-scope customer first so I can review their profile, products, cases, and recent interactions.";
+                trace.add(new TraceStep("NEXT_BEST_ACTION_CONTEXT", "MISSING_CUSTOMER", 0,
+                        "Customer-specific evidence is required before making an advisory recommendation."));
+                trace.add(new TraceStep("RAG_RETRIEVAL", "SKIPPED", 0, "No customer context is available for product guidance retrieval."));
+                trace.add(new TraceStep("CONTEXT_ASSEMBLY", "SKIPPED", 0, "No customer evidence is available."));
+                trace.add(new TraceStep("MOCK_LLM", "SKIPPED", 0, "Recommendations are produced by deterministic advisory rules."));
+            } else {
+                long retrievalStarted = System.nanoTime();
+                String productTerms = customerContext.products().stream().map(product -> product.productType().replace('_', ' '))
+                        .collect(java.util.stream.Collectors.joining(" "));
+                sources = knowledgeService.search("customer product relationship review " + productTerms, 3);
+                grounded = !sources.isEmpty();
+                trace.add(new TraceStep("NEXT_BEST_ACTION_CONTEXT", "COMPLETED", 0,
+                        "Reviewed customer segment " + customerContext.customer().segment() + ", "
+                                + customerContext.products().size() + " products, " + customerContext.interactions().size()
+                                + " interactions, and " + customerContext.cases().size() + " cases."));
+                String refs = sources.stream().map(RetrievedChunk::reference).collect(java.util.stream.Collectors.joining(", "));
+                trace.add(new TraceStep("RAG_RETRIEVAL", grounded ? "COMPLETED" : "NO_EVIDENCE",
+                        elapsedMillis(retrievalStarted), grounded ? "Retrieved synthetic product guidance: " + refs
+                                : "No bundled product guidance matched the customer's product relationships."));
+                trace.add(new TraceStep("CONTEXT_ASSEMBLY", "COMPLETED", 0,
+                        "Assembled authorized profile, product, interaction, case, and retrieved guidance evidence."));
+                trace.add(new TraceStep("MOCK_LLM", "SKIPPED", 0,
+                        "Recommendations are generated with deterministic rules and remain advisory."));
+                answer = nextBestActionAnswer(customerContext, sources);
+            }
+        } else if (knowledgeQuestion) {
             long retrievalStarted = System.nanoTime();
             sources = knowledgeService.search(message, 3);
             long retrievalDuration = elapsedMillis(retrievalStarted);
@@ -84,13 +114,54 @@ public final class AssistantService {
         trace.add(new TraceStep("FINAL_RESPONSE", abstained ? "ABSTAINED" : "COMPLETED", 0,
                 abstained ? "Returned an abstention because no reliable source was found." : "Prepared the response for the authorized user."));
 
-        return new AssistantResponse(message, answer, llmProvider.providerId(),
+        return new AssistantResponse(message, answer, provider,
                 customerContext == null ? null : customerContext.customer().id(), analysis, grounded, abstained,
                 sources, trace, elapsedMillis(startedAt));
     }
 
     public NlpResult analyze(String message) {
         return nlpEngine.analyze(message);
+    }
+
+    private static boolean isNextBestActionQuestion(String message) {
+        String text = message.toLowerCase(java.util.Locale.ROOT);
+        return contains(text, "what should i do next", "what should i do for this customer", "next best action",
+                "what is the next best action", "apa yang harus saya lakukan selanjutnya", "apa langkah berikutnya untuk nasabah");
+    }
+
+    private static String nextBestActionAnswer(Customer360 customer, List<RetrievedChunk> sources) {
+        StringBuilder answer = new StringBuilder("Advisory next steps for ")
+                .append(customer.customer().fullName()).append(" (segment: ")
+                .append(customer.customer().segment().replace('_', ' ').toLowerCase()).append("):\n\n");
+        int number = 1;
+        List<com.pswied.core.crm.CrmModels.ServiceCase> activeCases = customer.cases().stream()
+                .filter(serviceCase -> List.of("OPEN", "IN_PROGRESS", "WAITING_FOR_CUSTOMER").contains(serviceCase.status())).toList();
+        if (!activeCases.isEmpty()) {
+            var serviceCase = activeCases.getFirst();
+            answer.append(number++).append(". Follow up on ").append(serviceCase.reference()).append(" — ")
+                    .append(serviceCase.subject()).append(" is ").append(serviceCase.status().replace('_', ' ').toLowerCase())
+                    .append(" at ").append(serviceCase.priority().toLowerCase())
+                    .append(" priority. Confirm the investigation owner and the next customer update.");
+            if (serviceCase.escalated()) answer.append(" The case is escalated.");
+            answer.append("\n\n");
+        }
+        if (!customer.interactions().isEmpty()) {
+            var interaction = customer.interactions().getFirst();
+            answer.append(number++).append(". Continue from the latest interaction: “")
+                    .append(interaction.summary()).append("” via ")
+                    .append(interaction.channel().replace('_', ' ').toLowerCase())
+                    .append(". Check that the recorded outcome still reflects the customer's needs.\n\n");
+        }
+        if (!customer.products().isEmpty()) {
+            var product = customer.products().getFirst();
+            answer.append(number++).append(". Review the customer's ").append(product.displayName())
+                    .append(" relationship in a needs conversation. Ask about goals, access needs, and relevant time horizon; use current approved product terms before discussing options.");
+            if (!sources.isEmpty()) answer.append(" The synthetic product review guide is cited below.");
+            answer.append("\n\n");
+        }
+        if (number == 1) answer.append("Confirm the customer's current goals and preferred follow-up channel before proposing a next step.\n\n");
+        answer.append("These suggestions are advisory. Verify customer instructions and suitability requirements; the demo does not determine eligibility or recommend a specific product change.");
+        return answer.toString().strip();
     }
 
     private static boolean isKnowledgeQuestion(String message, NlpResult analysis) {

@@ -111,7 +111,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Demo/exit:** BI-FAST question is answered with source references; unsupported questions abstain without invented citations. This works offline.
 
-**Implemented slice:** Three synthetic banking guidance documents are bundled as versioned Markdown resources. Startup parses their metadata, chunks their content, and indexes them in memory. Deterministic lexical retrieval ranks passages and returns stable document/chunk references, snippets, and relevance scores. Policy/procedure requests pass bounded retrieved passages to the mock LLM; the response keeps citations separate from generated text. If retrieval returns no passage above the threshold, generation is skipped and the assistant abstains. The UI lists the corpus and displays citations and excerpts. Document upload, editing, and richer retrieval evaluation remain future work.
+**Implemented slice:** Four synthetic banking guidance documents are bundled as versioned Markdown resources. Startup parses their metadata, chunks their content, and indexes them in memory. Deterministic lexical retrieval ranks passages and returns stable document/chunk references, snippets, and relevance scores. Policy/procedure requests pass bounded retrieved passages to the mock LLM; the response keeps citations separate from generated text. If retrieval returns no passage above the threshold, generation is skipped and the assistant abstains. The UI lists the corpus and displays citations and excerpts. Document upload, editing, and richer retrieval evaluation remain future work.
 
 ### M5 — MCP-compatible tools and confirmed writes — implemented; verification pending
 
@@ -125,7 +125,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Demo/exit:** Read tools operate within the user's scope. A case is not created until the authorized user confirms the displayed proposal; confirmation and result are auditable.
 
-**Implemented slice:** The in-process registry discovers all nine required tool names with MCP-compatible JSON schemas, validates required/enum/length/unknown fields, separates read and write operations, applies role and customer-scope checks, and audits discovery and invocation. Write calls prepare immutable previews and issue five-minute, actor-bound, one-use confirmation tokens; execution rechecks authorization and uses only the stored arguments. The tool explorer invokes reads and confirmed writes. Imperative assistant case-creation requests prepare a case preview through `create_service_case`; no record changes before confirmation. Remote MCP transport remains outside the zero-dependency run mode.
+**Implemented slice:** The in-process registry discovers all ten tools, including the nine initial required tool names and a scope-limited unresolved payment complaint search, with MCP-compatible JSON schemas. It validates required/enum/length/unknown fields, separates read and write operations, applies role and customer-scope checks, and audits discovery and invocation. Write calls prepare immutable previews and issue five-minute, actor-bound, one-use confirmation tokens; execution rechecks authorization and uses only the stored arguments. The tool explorer invokes reads and confirmed writes. Imperative assistant case-creation requests prepare a case preview through `create_service_case`; no record changes before confirmation. Remote MCP transport remains outside the zero-dependency run mode.
 
 ### M6 — Interchangeable mocks and execution trace — implemented; verification pending
 
@@ -156,6 +156,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Dashboard slice:** The bundled UI provides a responsive, scope-aware operational dashboard with customer/case/interaction KPIs, case-status and customer-segment charts, a prioritized active-case queue, and recent interactions. It reads only through existing authorization-checked endpoints and refreshes after identity changes and case/interaction writes. The data is synthetic and calculated in the browser; no analytics service or external chart library is required.
 
+**Scenario slice:** The assistant now produces rule-based, advisory next-best-action guidance from authorized profile, case, product, and interaction context, with a synthetic product review source. A new read-only MCP tool searches unresolved payment complaints only within the caller's customer scope; the assistant groups matches by customer and returns structured case summaries. Synthetic unresolved payment cases and interactions make both flows repeatable. Automated tests and full six-scenario verification remain pending.
+
 ### Optional M8 — Sales and campaign features
 
 Add synthetic leads, opportunities, campaigns, campaign responses, and product recommendations after the core CRM + AI showcase is stable. Keep recommendations advisory and fixture-backed.
@@ -168,8 +170,8 @@ Add synthetic leads, opportunities, campaigns, campaign responses, and product r
 | 2. Intelligent Complaint Classification | M3 | Intent, entities, sentiment, category, and priority shown deterministically. |
 | 3. AI Knowledge Assistant | M4 | Grounded answer with local source references, or abstention. |
 | 4. AI-Assisted Case Creation | M2, M5 | Reviewable proposal, explicit confirmation, tool execution, and case reference. |
-| 5. Next Best Action | M1, M3, M4 | Advisory recommendation with evidence from profile, products, interactions, and knowledge. |
-| 6. Conversational Banking CRM | M2, M3, M5 | In-scope unresolved payment complaints summarized from local fixtures. |
+| 5. Next Best Action | M1, M3, M4, M7 | Advisory recommendation with evidence from profile, products, interactions, and synthetic product guidance. |
+| 6. Conversational Banking CRM | M2, M3, M5, M7 | In-scope unresolved payment complaints summarized from local fixtures. |
 
 M6 and M7 make the trace, adapter comparison, and zero-setup behavior visible across all scenarios.
 

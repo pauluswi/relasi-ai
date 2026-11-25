@@ -10,6 +10,7 @@ import com.pswied.core.knowledge.KnowledgeService;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -181,6 +182,25 @@ public final class ToolRegistry {
                     requireCustomer(context.user(), context.arguments().get("customerId"));
                     var found = cases.list(context.user().customerScope(), context.arguments().get("customerId"), null);
                     return Map.of("cases", found.stream().map(CrmJson::caseSummary).toList(), "total", found.size());
+                });
+
+        read("search_unresolved_payment_complaints", "Find unresolved payment complaints only within the user's customer scope and group the matching cases by customer.",
+                List.of(), context -> {
+                    List<Map<String, Object>> customerGroups = new ArrayList<>();
+                    int totalCases = 0;
+                    for (var customer : crm.searchCustomers("", context.user().customerScope())) {
+                        var matchingCases = cases.list(context.user().customerScope(), customer.id(), null).stream()
+                                .filter(serviceCase -> List.of("OPEN", "IN_PROGRESS", "WAITING_FOR_CUSTOMER").contains(serviceCase.status()))
+                                .filter(serviceCase -> List.of("PAYMENT_COMPLAINT", "TRANSACTION_DISPUTE").contains(serviceCase.category()))
+                                .map(CrmJson::caseSummary).toList();
+                        if (!matchingCases.isEmpty()) {
+                            totalCases += matchingCases.size();
+                            customerGroups.add(Map.of("customer", CrmJson.customerSummary(customer), "cases", matchingCases,
+                                    "unresolvedCaseCount", matchingCases.size()));
+                        }
+                    }
+                    return Map.of("customers", customerGroups, "totalCustomers", customerGroups.size(), "totalCases", totalCases,
+                            "scope", "authorized-customer-scope");
                 });
 
         read("get_payment_status", "Retrieve mock payment status for an authorized synthetic transaction.",

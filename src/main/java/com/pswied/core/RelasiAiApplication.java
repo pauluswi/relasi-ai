@@ -486,6 +486,11 @@ public final class RelasiAiApplication {
             return;
         }
 
+        if (isCaseAggregationRequest(message)) {
+            handleCaseAggregation(exchange, user, message);
+            return;
+        }
+
         Customer360 customerContext = null;
         if (!customerId.isBlank()) {
             var base = CRM.getCustomer360(customerId, user.customerScope());
@@ -508,6 +513,80 @@ public final class RelasiAiApplication {
         }
         AssistantResponse response = ASSISTANT.respond(message, customerContext);
         send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(response.asJsonValue()));
+    }
+
+    private static void handleCaseAggregation(HttpExchange exchange, DemoUser user, String message) throws IOException {
+        long startedAt = System.nanoTime();
+        long nlpStarted = System.nanoTime();
+        com.pswied.core.ai.NlpResult analysis = ASSISTANT.analyze(message);
+        long nlpMillis = elapsedMillis(nlpStarted);
+        try {
+            long discoveryStarted = System.nanoTime();
+            List<Map<String, Object>> definitions = TOOLS.discover();
+            if (definitions.stream().noneMatch(definition -> "search_unresolved_payment_complaints".equals(definition.get("name")))) {
+                throw new ToolRegistry.ToolInvocationException(404, "tool_not_found", "Payment complaint search is unavailable.");
+            }
+            AUDIT.record(user.id(), "MCP_TOOLS_DISCOVERED", "search_unresolved_payment_complaints", "SUCCESS");
+            long discoveryMillis = elapsedMillis(discoveryStarted);
+            var invocation = TOOLS.invoke(new ToolUser(user.id(), user.role(), user.customerScope()),
+                    "search_unresolved_payment_complaints", Map.of());
+            Map<?, ?> toolResult = (Map<?, ?>) invocation.payload().get("result");
+            List<?> groups = (List<?>) toolResult.get("customers");
+            int totalCases = ((Number) toolResult.get("totalCases")).intValue();
+            String answer = caseAggregationAnswer(groups, totalCases);
+            List<AssistantResponse.TraceStep> trace = List.of(
+                    new AssistantResponse.TraceStep("INPUT_RECEIVED", "COMPLETED", 0, "Cross-customer case search requested."),
+                    new AssistantResponse.TraceStep("NLP_ANALYSIS", "COMPLETED", nlpMillis,
+                            "Recognized unresolved payment complaint search intent."),
+                    new AssistantResponse.TraceStep("CRM_ADAPTER", "LOCAL_MOCK", 0,
+                            "CRM data served through the configured " + CRM_PROFILE + "-style in-memory adapter."),
+                    new AssistantResponse.TraceStep("RAG_RETRIEVAL", "SKIPPED", 0, "The request is answered from scoped case records."),
+                    new AssistantResponse.TraceStep("MCP_TOOL_DISCOVERY", "COMPLETED", discoveryMillis,
+                            "Discovered search_unresolved_payment_complaints in the local registry."),
+                    new AssistantResponse.TraceStep("MCP_TOOL_CALL", "COMPLETED", 0,
+                            "Queried unresolved payment complaints within the user's authorized customer scope."),
+                    new AssistantResponse.TraceStep("CASE_AGGREGATION", "COMPLETED", 0,
+                            "Grouped " + totalCases + " matching cases across " + groups.size() + " customers."),
+                    new AssistantResponse.TraceStep("MOCK_LLM", "SKIPPED", 0, "Summary generated deterministically from the matching CRM records."),
+                    new AssistantResponse.TraceStep("FINAL_RESPONSE", "COMPLETED", 0, "Returned a structured, scope-limited case summary."));
+            AssistantResponse response = new AssistantResponse(message, answer, "DETERMINISTIC_CRM_AGGREGATION",
+                    null, analysis, false, false, List.of(), trace, elapsedMillis(startedAt));
+            Map<String, Object> body = new LinkedHashMap<>(response.asJsonValue());
+            body.put("caseAggregation", groups);
+            body.put("totalCases", totalCases);
+            body.put("toolName", "search_unresolved_payment_complaints");
+            send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(body));
+        } catch (ToolRegistry.ToolInvocationException exception) {
+            send(exchange, exception.statusCode(), "application/json; charset=utf-8",
+                    CrmJson.stringify(Map.of("error", exception.code(), "message", exception.getMessage())));
+        }
+    }
+
+    private static String caseAggregationAnswer(List<?> groups, int totalCases) {
+        if (groups.isEmpty()) return "No unresolved payment complaints were found in your authorized customer scope.";
+        StringBuilder answer = new StringBuilder("Found ").append(totalCases)
+                .append(" unresolved payment complaint case(s) across ").append(groups.size())
+                .append(" customer(s) in your authorized scope:\n\n");
+        for (Object groupValue : groups) {
+            Map<?, ?> group = (Map<?, ?>) groupValue;
+            Map<?, ?> customer = (Map<?, ?>) group.get("customer");
+            answer.append("• ").append(customer.get("fullName")).append(" (").append(customer.get("id")).append("): ");
+            List<?> cases = (List<?>) group.get("cases");
+            answer.append(cases.stream().map(value -> {
+                Map<?, ?> serviceCase = (Map<?, ?>) value;
+                return serviceCase.get("reference") + " — " + serviceCase.get("subject") + " ["
+                        + String.valueOf(serviceCase.get("status")).replace('_', ' ').toLowerCase(Locale.ROOT) + ", "
+                        + String.valueOf(serviceCase.get("priority")).toLowerCase(Locale.ROOT) + " priority]";
+            }).collect(java.util.stream.Collectors.joining("; "))).append(".\n");
+        }
+        answer.append("This summary uses synthetic CRM cases only. Payment status has not been checked.");
+        return answer.toString().strip();
+    }
+
+    private static boolean isCaseAggregationRequest(String message) {
+        String text = message.toLowerCase(Locale.ROOT);
+        return text.contains("unresolved payment complaint") || text.contains("unresolved payment case")
+                || text.contains("pengaduan pembayaran yang belum selesai");
     }
 
     private static void prepareAssistantCase(HttpExchange exchange, DemoUser user, String message,

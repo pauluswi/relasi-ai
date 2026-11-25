@@ -18,7 +18,7 @@ public final class DeterministicNlpEngine implements NlpEngine {
     public NlpResult analyze(String text) {
         String normalized = text.toLowerCase(Locale.ROOT);
         String intent = intent(normalized);
-        String sentiment = sentiment(normalized);
+        String sentiment = "UNRESOLVED_PAYMENT_CASE_SEARCH".equals(intent) ? "NEUTRAL" : sentiment(normalized);
         String category = caseCategory(intent);
         String priority = "URGENT_FRUSTRATED".equals(sentiment)
                 || ("TRANSACTION_COMPLAINT".equals(intent) && "NEGATIVE".equals(sentiment)) ? "HIGH" : "NORMAL";
@@ -35,6 +35,10 @@ public final class DeterministicNlpEngine implements NlpEngine {
     }
 
     private static String intent(String text) {
+        if (containsAny(text, "find customers who have unresolved", "unresolved payment complaints",
+                "find customers with unresolved payment", "summarize their cases", "cari nasabah dengan pengaduan pembayaran yang belum selesai")) {
+            return "UNRESOLVED_PAYMENT_CASE_SEARCH";
+        }
         boolean failedTransfer = containsAny(text, "not received", "hasn't received", "haven't received", "not arrived",
                 "belum diterima", "belum masuk", "tidak masuk", "gagal transfer", "transfer gagal", "failed transfer",
                 "failed payment", "unsuccessful bi-fast", "bi-fast transaction failed");

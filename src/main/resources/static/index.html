@@ -41,7 +41,11 @@
     .inline-form { border-top: 1px solid #e1e7ee; padding-top: .65rem; margin-top: .6rem; }
     .form-message { margin: .5rem 0 0; }
     .assistant-question { min-height: 90px; width: 100%; box-sizing: border-box; font: inherit; border: 1px solid #b9c6d4; border-radius: 7px; padding: .7rem; resize: vertical; }
-    .assistant-answer { border-left: 3px solid #126b65; padding: .7rem 1rem; margin: 1rem 0; background: #f6faf9; line-height: 1.55; }
+    .assistant-answer { border-left: 3px solid #126b65; padding: .7rem 1rem; margin: 1rem 0; background: #f6faf9; line-height: 1.55; white-space: pre-line; }
+    .aggregate-case-card { border: 1px solid #dce4ed; border-radius: 10px; padding: .9rem 1rem; margin: .65rem 0; background: #fbfcfc; }
+    .aggregate-case-card header { background: transparent; color: #203847; padding: 0; margin: 0 0 .45rem; }
+    .aggregate-case-card h4 { margin: 0; font-size: .93rem; }
+    .aggregate-case-card button { width: auto; padding: .35rem .6rem; font-size: .78rem; }
     .analysis-pills { display: flex; flex-wrap: wrap; gap: .45rem; margin: .8rem 0; }
     .analysis-pill { background: #edf2f7; color: #33465a; border-radius: 99px; padding: .28rem .6rem; font-size: .82rem; }
     .confirmation-card { border: 1px solid #e5b65c; border-radius: 9px; background: #fffaf0; padding: 1rem; margin-top: .8rem; }
@@ -802,6 +806,31 @@
       assistantResult.append(makeText('span', response.abstained ? 'Abstained · no reliable source' : response.grounded ? 'Grounded in retrieved sources' : 'CRM/service mock response', 'badge'));
       const answer = makeText('p', response.answer, 'assistant-answer');
       assistantResult.append(answer);
+      if (response.caseAggregation) {
+        assistantResult.append(makeText('h3', `Unresolved payment complaints · ${response.totalCases} case(s)`));
+        if (!response.caseAggregation.length) {
+          assistantResult.append(makeText('p', 'No matching cases were found in this identity’s authorized scope.', 'muted'));
+        }
+        for (const group of response.caseAggregation) {
+          const card = makeText('article', '', 'aggregate-case-card');
+          const heading = document.createElement('header');
+          heading.append(makeText('h4', `${group.customer.fullName} · ${group.customer.customerNumber}`));
+          const view = makeText('button', 'Open profile');
+          view.type = 'button';
+          view.addEventListener('click', async () => {
+            await loadCustomer(group.customer.id);
+            detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
+          heading.append(view);
+          card.append(heading);
+          const cases = document.createElement('ul');
+          for (const serviceCase of group.cases) {
+            cases.append(makeText('li', `${serviceCase.reference} · ${serviceCase.subject} · ${serviceCase.status.replaceAll('_', ' ')} · ${serviceCase.priority} priority`));
+          }
+          card.append(cases);
+          assistantResult.append(card);
+        }
+      }
       if (response.sources.length) {
         assistantResult.append(makeText('h3', 'Retrieved sources'));
         const sources = document.createElement('ul');

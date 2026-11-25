@@ -17,7 +17,7 @@ RELASI AI is planned as an enterprise CRM demonstration combining customer and c
 - A scoped analytics dashboard with customer and service KPIs, portfolio mix, case health, follow-up priorities, and recent activity.
 - Service cases, assignments, SLA escalation, history, and customer interactions.
 - Deterministic mock AI and NLP for customer service inquiries.
-- Local synthetic banking knowledge retrieval with source references and abstention when evidence is missing.
+- Local synthetic banking knowledge retrieval with source references and abstention when evidence is missing, plus advisory next-best-action suggestions grounded in scoped customer evidence.
 - MCP-compatible tool discovery and execution through an in-process registry.
 - Explicit user confirmation before AI-assisted write operations.
 - An inspectable AI execution trace and interchangeable Dynamics-style and Salesforce-style CRM mocks.
@@ -86,6 +86,8 @@ The **Reset demo data** action is available to supervisors and administrators. I
 - Ask “What is the procedure for handling a BI-FAST transfer complaint?” The assistant retrieves local synthetic guidance and displays its sources.
 - With a customer selected, ask “Create a high-priority complaint case for this customer.” Review the preview and confirm it to create a case.
 - Ask a procedure question unrelated to the bundled corpus. The assistant should abstain when no source meets the retrieval threshold.
+- With Citra selected, ask “What should I do next for this customer?” The assistant prioritizes the open transfer dispute and cites synthetic product review guidance.
+- Ask “Find customers who have unresolved payment complaints and summarize their cases.” The assistant returns matching customers and cases visible to the selected identity.
 
 ### Troubleshooting
 
@@ -110,7 +112,7 @@ The **Reset demo data** action is available to supervisors and administrators. I
 
 ## Demonstration scenarios
 
-The requirements define these repeatable scenarios. Customer 360, complaint classification, grounded knowledge answers, and confirmed AI-assisted case creation are implemented in the current slices; next-best-action and multi-customer case aggregation remain planned.
+The requirements define these six repeatable scenarios. Each now has an implementation path using scoped synthetic data and local providers; automated scenario verification remains pending.
 
 1. Summarize a customer's relationship with the bank.
 2. Classify a payment complaint and extract relevant details.

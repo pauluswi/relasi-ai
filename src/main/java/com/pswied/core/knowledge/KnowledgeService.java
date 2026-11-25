@@ -18,7 +18,8 @@ public final class KnowledgeService {
     private static final List<String> BUNDLED_RESOURCES = List.of(
             "/knowledge/bi-fast-unsuccessful-transaction.md",
             "/knowledge/card-dispute.md",
-            "/knowledge/mobile-banking-login.md");
+            "/knowledge/mobile-banking-login.md",
+            "/knowledge/customer-product-review.md");
     private static final Pattern TOKEN = Pattern.compile("(?U)[\\p{L}\\p{N}]+(?:-[\\p{L}\\p{N}]+)*");
     private static final Set<String> STOP_WORDS = Set.of("a", "an", "and", "are", "as", "at", "be", "by", "can", "do", "for", "from", "how", "i", "in", "is", "it", "of", "on", "or", "the", "this", "to", "what", "when", "where", "which", "who", "with", "you", "your", "apa", "bagaimana", "dan", "di", "ini", "untuk", "yang", "dengan", "cara", "prosedur", "penanganan", "melakukan");
 

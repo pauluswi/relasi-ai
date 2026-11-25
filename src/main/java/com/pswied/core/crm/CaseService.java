@@ -24,7 +24,7 @@ public final class CaseService {
     private static final Set<String> ACTIVE_STATUSES = Set.of("OPEN", "IN_PROGRESS", "WAITING_FOR_CUSTOMER");
 
     private final Map<String, ServiceCase> cases = new ConcurrentHashMap<>();
-    private final AtomicInteger nextNumber = new AtomicInteger(59);
+    private final AtomicInteger nextNumber = new AtomicInteger(61);
     private final AuditService audit;
 
     public CaseService(AuditService audit) {
@@ -34,7 +34,7 @@ public final class CaseService {
 
     public synchronized void reset() {
         cases.clear();
-        nextNumber.set(59);
+        nextNumber.set(61);
         seedCases();
     }
 
@@ -211,6 +211,20 @@ public final class CaseService {
                 "IN_PROGRESS", "HIGH", officer, mobileCreated, mobileUpdated, "2026-11-23T05:40:00Z", null,
                 false, List.of(new CaseEvent(mobileCreated, officer, "CREATED", "Case opened from web chat."),
                 new CaseEvent(mobileUpdated, officer, "STATUS_CHANGED", "Investigation started."))));
+
+        String paymentCreated = "2026-11-24T02:10:00Z";
+        String paymentUpdated = "2026-11-24T03:00:00Z";
+        cases.put("CASE-2026-0059", new ServiceCase("CASE-2026-0059", "CUST-1001", "PAYMENT_COMPLAINT",
+                "BI-FAST transfer not received", "Customer reported a transfer that the recipient has not received.", "OPEN",
+                "HIGH", officer, paymentCreated, paymentUpdated, "2026-11-24T06:10:00Z", null, false,
+                List.of(new CaseEvent(paymentCreated, officer, "CREATED", "Payment complaint recorded."),
+                        new CaseEvent(paymentUpdated, officer, "STATUS_CHANGED", "Awaiting transaction review."))));
+
+        String disputeCreated = "2026-11-24T05:20:00Z";
+        cases.put("CASE-2026-0060", new ServiceCase("CASE-2026-0060", "CUST-1003", "TRANSACTION_DISPUTE",
+                "Business transfer under investigation", "Customer requested an update on a business transfer dispute.", "IN_PROGRESS",
+                "NORMAL", officer, disputeCreated, disputeCreated, "2026-11-25T05:20:00Z", null, false,
+                List.of(new CaseEvent(disputeCreated, officer, "CREATED", "Transfer dispute recorded for investigation."))));
     }
 
     public static final class CaseNotFoundException extends RuntimeException {

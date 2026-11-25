@@ -18,7 +18,7 @@ public final class InteractionService {
             "PAYMENT", "ACCOUNT", "LOAN", "CARD", "MOBILE_BANKING", "TRANSACTION", "GENERAL");
 
     private final Map<String, Interaction> interactions = new ConcurrentHashMap<>();
-    private final AtomicInteger nextNumber = new AtomicInteger(1007);
+    private final AtomicInteger nextNumber = new AtomicInteger(1009);
     private final AuditService audit;
 
     public InteractionService(AuditService audit) {
@@ -28,7 +28,7 @@ public final class InteractionService {
 
     public synchronized void reset() {
         interactions.clear();
-        nextNumber.set(1007);
+        nextNumber.set(1009);
         seedInteractions();
     }
 
@@ -95,6 +95,10 @@ public final class InteractionService {
                 "Requested callback from relationship manager", "Callback scheduled", null);
         addSeed("INT-1006", "CUST-1004", "WEB_CHAT", "MOBILE_BANKING", "2026-11-23T01:40:00Z",
                 "Reported a mobile banking login issue", "Case opened", "CASE-2026-0058");
+        addSeed("INT-1007", "CUST-1001", "MOBILE_BANKING", "PAYMENT", "2026-11-24T02:05:00Z",
+                "Reported a BI-FAST transfer not received by the recipient", "Payment complaint opened", "CASE-2026-0059");
+        addSeed("INT-1008", "CUST-1003", "TELEPHONE", "TRANSACTION", "2026-11-24T05:10:00Z",
+                "Requested an update on a business transfer dispute", "Investigation in progress", "CASE-2026-0060");
     }
 
     private void addSeed(String id, String customerId, String channel, String category, String occurredAt,

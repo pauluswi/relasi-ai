@@ -9,7 +9,7 @@
 
 RELASI AI is planned as an enterprise CRM demonstration combining customer and case management with AI assistance, knowledge retrieval, and controlled tool use. Its primary showcase mode is designed to run locally without a database, Docker, network access, credentials, or external systems.
 
-> **Project status:** The local runtime, scoped Customer 360, and initial case/interaction workflows are implemented. AI/RAG/MCP features remain planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
+> **Project status:** The local runtime, scoped Customer 360, case/interaction workflows, and deterministic AI/NLP assistant foundation are implemented. RAG and MCP tool workflows remain planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
 
 ## What the showcase will demonstrate
 
@@ -57,6 +57,7 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `GET /api/v1/interactions?customerId=...` | Lists interactions in the selected user's scope. |
 | `POST /api/v1/interactions` | Records an interaction for an in-scope customer, optionally linked to that customer's case. |
 | `GET /api/v1/audit` | Lists in-memory audit events (supervisor or administrator). |
+| `POST /api/v1/assistant/respond` | Analyzes a natural-language request and returns a deterministic mock response, structured NLP result, and execution trace. Optional `customerId` context is scope-checked. |
 
 Write endpoints accept `application/x-www-form-urlencoded` fields. The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; customer profile changes are not implemented.
 

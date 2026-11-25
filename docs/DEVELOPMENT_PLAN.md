@@ -87,7 +87,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Implemented slice:** In-memory case and interaction services provide seeded history, validated creation, status transitions, assignment, overdue SLA escalation, customer-linked interaction recording, and append-only event history. Writes produce in-memory audit events; supervisor/administrator access is required for assignment, escalation, and audit viewing. Customer service officers can create cases, change status, and record interactions. Every operation checks the user's customer scope. The UI exposes these workflows on the Customer 360 page. Queue filtering and broader verification remain to be completed.
 
-### M3 — Mock AI and NLP
+### M3 — Mock AI and NLP — started
 
 **Work:**
 
@@ -97,6 +97,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 - Validate structured output, show mock-provider status, and distinguish errors from abstention.
 
 **Demo/exit:** The payment complaint example returns repeatable intent, sentiment, amount, date, suggested category, and priority with a visible NLP trace.
+
+**Implemented slice:** `POST /api/v1/assistant/respond` runs deterministic intent, sentiment, language, and entity extraction, then calls the mock LLM adapter. It can summarize an in-scope selected customer's products, cases, and recent interactions. The response includes typed NLP results, the mock-provider identifier, and per-stage trace timing; the bundled UI displays the answer, extracted fields, and trace. It does not retrieve banking knowledge or claim to verify transactions; RAG and source attribution remain in M4.
 
 ### M4 — Knowledge and RAG
 

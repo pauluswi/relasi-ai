@@ -9,6 +9,10 @@ import com.pswied.core.crm.CaseService;
 import com.pswied.core.crm.CrmModels.Customer360;
 import com.pswied.core.crm.DynamicsStyleMockCrmAdapter;
 import com.pswied.core.crm.InteractionService;
+import com.pswied.core.ai.AssistantResponse;
+import com.pswied.core.ai.AssistantService;
+import com.pswied.core.ai.DeterministicNlpEngine;
+import com.pswied.core.ai.MockLlmProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +33,7 @@ public final class RelasiAiApplication {
     private static final AuditService AUDIT = new AuditService();
     private static final CaseService CASES = new CaseService(AUDIT);
     private static final InteractionService INTERACTIONS = new InteractionService(AUDIT);
+    private static final AssistantService ASSISTANT = new AssistantService(new DeterministicNlpEngine(), new MockLlmProvider());
 
     private RelasiAiApplication() {
     }
@@ -94,6 +99,10 @@ public final class RelasiAiApplication {
         }
         if (path.equals(API_PREFIX + "/audit")) {
             handleAuditRequest(exchange);
+            return;
+        }
+        if (path.equals(API_PREFIX + "/assistant/respond")) {
+            handleAssistantRequest(exchange);
             return;
         }
         if (!"GET".equals(exchange.getRequestMethod())) {
@@ -382,6 +391,41 @@ public final class RelasiAiApplication {
         }
         List<Map<String, Object>> events = AUDIT.events().stream().map(CrmJson::auditEvent).toList();
         send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of("events", events)));
+    }
+
+    private static void handleAssistantRequest(HttpExchange exchange) throws IOException {
+        if (!"POST".equals(exchange.getRequestMethod())) {
+            methodNotAllowed(exchange, "POST");
+            return;
+        }
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        Map<String, String> form = readForm(exchange);
+        if (form == null) return;
+        String message = form.getOrDefault("message", "").strip();
+        String customerId = form.getOrDefault("customerId", "").strip();
+        if (message.isBlank() || message.length() > 2000) {
+            badRequest(exchange, "Message is required and must be 2,000 characters or fewer.");
+            return;
+        }
+
+        Customer360 customerContext = null;
+        if (!customerId.isBlank()) {
+            var base = CRM.getCustomer360(customerId, user.customerScope());
+            if (base.isEmpty()) {
+                send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"customer_not_found\"}");
+                return;
+            }
+            Customer360 customer = base.get();
+            customerContext = new Customer360(customer.customer(), customer.contacts(), customer.products(),
+                    INTERACTIONS.list(customerId, user.customerScope()), CASES.list(user.customerScope(), customerId, null));
+        }
+
+        AssistantResponse response = ASSISTANT.respond(message, customerContext);
+        send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(response.asJsonValue()));
     }
 
     private static Map<String, String> readForm(HttpExchange exchange) throws IOException {

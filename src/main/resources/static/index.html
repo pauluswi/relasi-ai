@@ -40,6 +40,10 @@
     .form-actions button { width: auto; }
     .inline-form { border-top: 1px solid #e1e7ee; padding-top: .65rem; margin-top: .6rem; }
     .form-message { margin: .5rem 0 0; }
+    .assistant-question { min-height: 90px; width: 100%; box-sizing: border-box; font: inherit; border: 1px solid #b9c6d4; border-radius: 7px; padding: .7rem; resize: vertical; }
+    .assistant-answer { border-left: 3px solid #126b65; padding: .7rem 1rem; margin: 1rem 0; background: #f6faf9; line-height: 1.55; }
+    .analysis-pills { display: flex; flex-wrap: wrap; gap: .45rem; margin: .8rem 0; }
+    .analysis-pill { background: #edf2f7; color: #33465a; border-radius: 99px; padding: .28rem .6rem; font-size: .82rem; }
     .profile-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
     .profile-heading h2 { margin-bottom: .35rem; }
     .muted, .empty { color: #5b6877; line-height: 1.5; }
@@ -83,6 +87,14 @@
       <div id="customer-list" class="customer-list"><p class="empty">Loading customers…</p></div>
     </section>
     <section id="customer-detail" class="card" hidden aria-live="polite"></section>
+    <section class="card" aria-labelledby="assistant-title">
+      <h2 id="assistant-title">AI customer assistant <span class="badge">Deterministic mock</span></h2>
+      <p class="muted" id="assistant-context">Select a customer to include authorized Customer 360 context. Policy answers and RAG sources are part of a later milestone.</p>
+      <label for="assistant-question">Ask a question</label>
+      <textarea id="assistant-question" class="assistant-question" maxlength="2000" placeholder="Summarize this customer's relationship with the bank, or describe a customer inquiry…"></textarea>
+      <div class="form-actions"><button id="ask-assistant" type="button">Ask assistant</button></div>
+      <div id="assistant-result" aria-live="polite"></div>
+    </section>
   </main>
   <script>
     const healthBadge = document.querySelector('#health');
@@ -90,6 +102,8 @@
     const searchInput = document.querySelector('#search');
     const customerList = document.querySelector('#customer-list');
     const detail = document.querySelector('#customer-detail');
+    const assistantQuestion = document.querySelector('#assistant-question');
+    const assistantResult = document.querySelector('#assistant-result');
     const demoRoles = {};
     let selectedCustomerId = '';
 
@@ -118,6 +132,7 @@
     async function searchCustomers() {
       selectedCustomerId = '';
       detail.hidden = true;
+      document.querySelector('#assistant-context').textContent = 'Select a customer to include authorized Customer 360 context. Policy answers and RAG sources are part of a later milestone.';
       customerList.replaceChildren(document.createTextNode('Loading customers…'));
       try {
         const query = encodeURIComponent(searchInput.value.trim());
@@ -149,6 +164,7 @@
       try {
         const data = await api(`/api/v1/customers/${encodeURIComponent(customerId)}`);
         selectedCustomerId = customerId;
+        document.querySelector('#assistant-context').textContent = `Assistant context: ${data.customer.fullName} (${data.customer.id}) is selected. Access is checked again by the server.`;
         document.querySelectorAll('.customer-option').forEach(button => {
           button.setAttribute('aria-current', String(button.dataset.customerId === customerId));
         });
@@ -427,6 +443,50 @@
         && !serviceCase.escalated && new Date(serviceCase.slaDeadline).getTime() < Date.now();
     }
 
+    async function askAssistant() {
+      const message = assistantQuestion.value.trim();
+      if (!message) {
+        assistantResult.replaceChildren(makeText('p', 'Enter a question first.', 'error'));
+        return;
+      }
+      assistantResult.replaceChildren(makeText('p', 'Analyzing with local mock providers…', 'muted'));
+      const values = { message };
+      if (selectedCustomerId) values.customerId = selectedCustomerId;
+      try {
+        const response = await api('/api/v1/assistant/respond', { method: 'POST', body: new URLSearchParams(values) });
+        renderAssistantResponse(response);
+      } catch (error) {
+        assistantResult.replaceChildren(makeText('p', error.message, 'error'));
+      }
+    }
+
+    function renderAssistantResponse(response) {
+      assistantResult.replaceChildren();
+      assistantResult.append(makeText('p', `Request: ${response.input}`, 'muted'));
+      const answer = makeText('p', response.answer, 'assistant-answer');
+      assistantResult.append(answer);
+      const analysis = makeText('div', '', 'analysis-pills');
+      analysis.append(
+        makeText('span', `Intent: ${response.nlp.intent.replaceAll('_', ' ')}`, 'analysis-pill'),
+        makeText('span', `Sentiment: ${response.nlp.sentiment.replaceAll('_', ' ')}`, 'analysis-pill'),
+        makeText('span', `Language: ${response.nlp.language}`, 'analysis-pill'),
+        makeText('span', `Suggested case: ${response.nlp.suggestedCaseCategory.replaceAll('_', ' ')}`, 'analysis-pill'),
+        makeText('span', `Priority: ${response.nlp.suggestedPriority}`, 'analysis-pill')
+      );
+      assistantResult.append(analysis);
+      if (response.nlp.entities.length) {
+        assistantResult.append(makeText('h3', 'Extracted entities'));
+        const entities = document.createElement('ul');
+        for (const entity of response.nlp.entities) entities.append(makeText('li', `${entity.type.replaceAll('_', ' ')}: ${entity.value}`));
+        assistantResult.append(entities);
+      }
+      assistantResult.append(makeText('h3', `Execution trace · ${response.provider} · ${response.durationMs} ms`));
+      const trace = document.createElement('ol');
+      trace.className = 'trace-list';
+      for (const step of response.trace) trace.append(makeText('li', `${step.stage.replaceAll('_', ' ')} · ${step.status} · ${step.durationMs} ms · ${step.detail}`));
+      assistantResult.append(trace);
+    }
+
     function formatBalance(product) {
       if (product.availableBalance === 0) return '—';
       return new Intl.NumberFormat('id-ID', { style: 'currency', currency: product.currency, maximumFractionDigits: 0 }).format(product.availableBalance);
@@ -447,6 +507,7 @@
     userSelect.addEventListener('change', searchCustomers);
     document.querySelector('#search-button').addEventListener('click', searchCustomers);
     searchInput.addEventListener('keydown', event => { if (event.key === 'Enter') searchCustomers(); });
+    document.querySelector('#ask-assistant').addEventListener('click', askAssistant);
     loadUsers().catch(error => { customerList.replaceChildren(makeText('p', error.message, 'error')); });
   </script>
 </body>

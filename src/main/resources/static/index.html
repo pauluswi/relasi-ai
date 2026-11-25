@@ -170,6 +170,9 @@
     .pipeline-card { margin-top: .55rem; padding: .7rem; border: 1px solid #e1e7ee; border-radius: 9px; background: white; font-size: .8rem; }
     .pipeline-card strong, .pipeline-card small { display: block; }
     .pipeline-card small { margin-top: .3rem; color: #71808a; }
+    .pipeline-card .form-actions { gap: .35rem; margin-top: .6rem; padding: 0; border: 0; }
+    .pipeline-card .form-actions select { flex: 1; width: auto; min-width: 0; padding: .38rem; font-size: .76rem; }
+    .pipeline-card .form-actions button { width: auto; padding: .4rem .55rem; font-size: .76rem; }
     .queue-badge.overdue { color: #9b3028; background: #fde9e6; }
     .case-queue-table button { width: auto; padding: .42rem .62rem; font-size: .75rem; white-space: nowrap; }
     .reset-feedback { position: absolute; top: calc(100% + .25rem); right: 1.25rem; z-index: 3; margin: 0; color: #8a371f; background: #fff4eb; border-radius: 7px; padding: .35rem .55rem; font-size: .75rem; box-shadow: 0 3px 12px #172b3a18; }
@@ -287,8 +290,18 @@
     </section>
     <section id="sales" class="card" aria-labelledby="sales-title">
       <div class="section-hero"><div><h2 id="sales-title">Sales &amp; campaigns</h2><p>Relationship opportunities and campaign activity</p></div><span class="badge">Illustrative mock workspace</span></div>
-      <p class="muted">This UI previews the planned sales workflow with synthetic examples. Leads, opportunity updates, campaign enrollment, and response tracking are not connected to write APIs yet.</p>
+      <p class="muted">Opportunity records are synthetic and held in memory. Campaign enrollment and response recording remain read-only showcase data.</p>
       <div class="dashboard-grid" id="sales-metrics"></div>
+      <section class="admin-card" aria-labelledby="new-opportunity-title" style="margin-bottom:.9rem">
+        <h3 id="new-opportunity-title">Add an opportunity</h3>
+        <p class="muted" id="sales-write-note">Opportunity creation and stage changes are available to relationship managers, supervisors, and administrators.</p>
+        <form id="opportunity-form" class="form-grid" hidden>
+          <div><label for="opportunity-customer">Customer</label><select id="opportunity-customer" name="customerId" required></select></div>
+          <div><label for="opportunity-amount">Estimated value (IDR)</label><input id="opportunity-amount" name="amount" type="number" min="1" max="10000000000000" step="1" required></div>
+          <div class="wide"><label for="opportunity-name">Opportunity name</label><input id="opportunity-name" name="name" type="text" maxlength="120" required></div>
+          <div class="form-actions wide"><button type="submit" style="width:auto">Create opportunity</button><span id="sales-feedback" role="status" aria-live="polite"></span></div>
+        </form>
+      </section>
       <div class="pipeline" id="sales-pipeline" aria-label="Illustrative opportunity pipeline"></div>
       <div class="dashboard-panels" style="margin-top: .9rem">
         <section class="dashboard-panel" aria-labelledby="campaign-list-title"><div class="panel-heading"><div><h3 id="campaign-list-title">Campaigns</h3><p>Sample engagement programs</p></div></div><div id="campaign-list" class="dashboard-list"></div></section>
@@ -585,9 +598,9 @@
       const requestId = ++salesRequest;
       document.querySelector('#sales-metrics').replaceChildren(makeText('article', 'Loading scoped sales and campaign records…', 'metric-card'));
       try {
-        const result = await api('/api/v1/sales');
+        const [result, customerData] = await Promise.all([api('/api/v1/sales'), api('/api/v1/customers')]);
         if (identityId !== userSelect.value || requestId !== salesRequest) return;
-        renderSalesWorkspace(result);
+        renderSalesWorkspace(result, customerData.customers);
       } catch (error) {
         if (identityId !== userSelect.value || requestId !== salesRequest) return;
         document.querySelector('#sales-metrics').replaceChildren(makeText('p', error.message, 'error'));
@@ -597,8 +610,16 @@
       }
     }
 
-    function renderSalesWorkspace(data) {
+    function renderSalesWorkspace(data, customers) {
       const opportunities = data.opportunities;
+      const canWrite = ['RELATIONSHIP_MANAGER', 'CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(demoRoles[userSelect.value]);
+      const opportunityForm = document.querySelector('#opportunity-form');
+      opportunityForm.hidden = !canWrite;
+      document.querySelector('#sales-write-note').textContent = canWrite
+        ? 'Create an opportunity for a customer in your scope. New opportunities start in Discovery.'
+        : 'Opportunity creation and stage changes require relationship manager, supervisor, or administrator access.';
+      const customerSelect = document.querySelector('#opportunity-customer');
+      customerSelect.replaceChildren(...customers.map(customer => option(customer.id, `${customer.fullName} · ${customer.id}`)));
       const columns = [
         ['DISCOVERY', 'Discovery'], ['QUALIFICATION', 'Qualification'], ['PROPOSAL', 'Proposal'], ['CLOSED_WON', 'Closed won']
       ];
@@ -628,6 +649,19 @@
         for (const item of items) {
           const card = makeText('article', '', 'pipeline-card');
           card.append(makeText('strong', item.name), makeText('small', `${item.customerName} · ${formatCurrency(item.amount, item.currency)}`), makeText('small', item.owner.replaceAll('-', ' ')));
+          if (canWrite) {
+            const stageForm = document.createElement('form');
+            stageForm.className = 'form-actions';
+            const stageSelect = document.createElement('select');
+            stageSelect.setAttribute('aria-label', `New stage for ${item.name}`);
+            for (const [value, text] of [['DISCOVERY', 'Discovery'], ['QUALIFICATION', 'Qualification'], ['PROPOSAL', 'Proposal'], ['CLOSED_WON', 'Closed won'], ['CLOSED_LOST', 'Closed lost']]) {
+              const stageOption = option(value, text); stageOption.selected = value === item.stage; stageSelect.append(stageOption);
+            }
+            const saveStage = makeText('button', 'Update'); saveStage.type = 'submit';
+            stageForm.append(stageSelect, saveStage);
+            stageForm.addEventListener('submit', event => updateOpportunityStage(event, item.id, stageSelect.value));
+            card.append(stageForm);
+          }
           column.append(card);
         }
         pipeline.append(column);
@@ -648,6 +682,45 @@
 
     function formatCurrency(value, currency) {
       return new Intl.NumberFormat('id-ID', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
+    }
+
+    async function createOpportunity(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button[type="submit"]');
+      const feedback = document.querySelector('#sales-feedback');
+      button.disabled = true;
+      feedback.textContent = 'Saving opportunity…';
+      try {
+        const body = new URLSearchParams(new FormData(form));
+        const result = await api('/api/v1/sales/opportunities', { method: 'POST', body });
+        form.reset();
+        feedback.textContent = `${result.id} created in Discovery.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        feedback.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function updateOpportunityStage(event, id, stage) {
+      event.preventDefault();
+      const button = event.currentTarget.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        await api(`/api/v1/sales/opportunities/${encodeURIComponent(id)}`, {
+          method: 'POST', body: new URLSearchParams({ stage })
+        });
+        document.querySelector('#sales-feedback').textContent = `${id} moved to ${stage.replaceAll('_', ' ')}.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
     }
 
     async function loadAdministration() {
@@ -1463,6 +1536,7 @@
     resetButton.addEventListener('click', resetDemoState);
     document.querySelector('#admin-reset').addEventListener('click', resetDemoState);
     document.querySelector('#refresh-admin').addEventListener('click', loadAdministration);
+    document.querySelector('#opportunity-form').addEventListener('submit', createOpportunity);
     document.querySelector('#contact-search').addEventListener('input', () => renderContacts(contactRows));
     document.querySelector('#contact-channel').addEventListener('change', () => renderContacts(contactRows));
     document.querySelector('#search-button').addEventListener('click', searchCustomers);

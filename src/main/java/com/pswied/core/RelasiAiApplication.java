@@ -41,7 +41,7 @@ public final class RelasiAiApplication {
     private static final AuditService AUDIT = new AuditService();
     private static final CaseService CASES = new CaseService(AUDIT);
     private static final InteractionService INTERACTIONS = new InteractionService(AUDIT);
-    private static final SalesService SALES = new SalesService();
+    private static final SalesService SALES = new SalesService(AUDIT);
     private static final KnowledgeService KNOWLEDGE = new KnowledgeService();
     private static final AssistantService ASSISTANT = new AssistantService(new DeterministicNlpEngine(), new MockLlmProvider(), KNOWLEDGE, CRM_PROFILE);
     private static final ToolRegistry TOOLS = new ToolRegistry(CRM, CASES, INTERACTIONS, KNOWLEDGE, AUDIT);
@@ -142,8 +142,9 @@ public final class RelasiAiApplication {
             handleInteractionRequest(exchange);
             return;
         }
-        if (path.equals(API_PREFIX + "/sales")) {
-            handleSalesRequest(exchange);
+        if (path.equals(API_PREFIX + "/sales") || path.equals(API_PREFIX + "/sales/opportunities")
+                || path.startsWith(API_PREFIX + "/sales/opportunities/")) {
+            handleSalesRequest(exchange, path);
             return;
         }
         if (path.equals(API_PREFIX + "/audit")) {
@@ -459,18 +460,60 @@ public final class RelasiAiApplication {
         send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of("events", events)));
     }
 
-    private static void handleSalesRequest(HttpExchange exchange) throws IOException {
-        if (!"GET".equals(exchange.getRequestMethod())) {
-            methodNotAllowed(exchange, "GET");
-            return;
-        }
+    private static void handleSalesRequest(HttpExchange exchange, String path) throws IOException {
         DemoUser user = requestUser(exchange);
         if (user == null) {
             unauthorized(exchange);
             return;
         }
-        send(exchange, 200, "application/json; charset=utf-8",
-                CrmJson.stringify(SALES.dashboard(CRM, user.customerScope())));
+        String method = exchange.getRequestMethod();
+        if (path.equals(API_PREFIX + "/sales") && "GET".equals(method)) {
+            send(exchange, 200, "application/json; charset=utf-8",
+                    CrmJson.stringify(SALES.dashboard(CRM, user.customerScope())));
+            return;
+        }
+        if (!canManageSales(user)) {
+            forbidden(exchange);
+            return;
+        }
+        if (path.equals(API_PREFIX + "/sales/opportunities") && "POST".equals(method)) {
+            Map<String, String> form = readForm(exchange);
+            if (form == null) return;
+            String customerId = form.getOrDefault("customerId", "").strip();
+            if (CRM.getCustomer360(customerId, user.customerScope()).isEmpty()) {
+                send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"customer_not_found\"}");
+                return;
+            }
+            try {
+                long amount = Long.parseLong(form.getOrDefault("amount", ""));
+                var opportunity = SALES.create(user.id(), customerId, form.get("name"), amount, user.customerScope());
+                send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                        "id", opportunity.id(), "customerId", opportunity.customerId(), "name", opportunity.name(),
+                        "stage", opportunity.stage(), "amount", opportunity.amount(), "currency", opportunity.currency(),
+                        "owner", opportunity.owner())));
+            } catch (NumberFormatException exception) {
+                badRequest(exchange, "Opportunity amount must be a whole number of IDR.");
+            } catch (IllegalArgumentException exception) {
+                badRequest(exchange, exception.getMessage());
+            }
+            return;
+        }
+        if (path.startsWith(API_PREFIX + "/sales/opportunities/") && "POST".equals(method)) {
+            String id = URLDecoder.decode(path.substring((API_PREFIX + "/sales/opportunities/").length()), StandardCharsets.UTF_8);
+            Map<String, String> form = readForm(exchange);
+            if (form == null) return;
+            try {
+                var updated = SALES.updateStage(user.id(), id, form.get("stage"), user.customerScope());
+                send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                        "id", updated.id(), "stage", updated.stage())));
+            } catch (SalesService.OpportunityNotFoundException exception) {
+                send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"opportunity_not_found\"}");
+            } catch (IllegalArgumentException exception) {
+                badRequest(exchange, exception.getMessage());
+            }
+            return;
+        }
+        methodNotAllowed(exchange, path.equals(API_PREFIX + "/sales") ? "GET" : "GET or POST");
     }
 
     private static void resetDemoState(HttpExchange exchange) throws IOException {
@@ -489,6 +532,7 @@ public final class RelasiAiApplication {
         }
         CASES.reset();
         INTERACTIONS.reset();
+        SALES.reset();
         TOOLS.clearPendingConfirmations();
         AUDIT.reset();
         AUDIT.record(user.id(), "DEMO_STATE_RESET", "in-memory-demo", "SUCCESS");
@@ -799,6 +843,10 @@ public final class RelasiAiApplication {
 
     private static boolean canHandleCases(DemoUser user) {
         return isSupervisor(user) || "CUSTOMER_SERVICE_OFFICER".equals(user.role());
+    }
+
+    private static boolean canManageSales(DemoUser user) {
+        return isSupervisor(user) || "RELATIONSHIP_MANAGER".equals(user.role());
     }
 
     private static boolean isSupervisor(DemoUser user) {

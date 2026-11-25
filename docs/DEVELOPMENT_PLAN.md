@@ -166,11 +166,11 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Case queue slice:** Added a dedicated navigation destination with scope-limited case counts, active/overdue summaries, customer/reference/subject search, status and priority filters, SLA highlighting, and a link to each in-scope Customer 360 profile.
 
-**Broader workspace UI slice:** Added a standalone contact directory that composes contacts only from customer profiles visible to the selected identity, with search and preferred-channel filtering. Added a sales and campaign dashboard backed by a deterministic in-memory fixture service and a scope-filtered `GET /api/v1/sales` endpoint for opportunities, campaign counts, and responses. This is a read-only first slice; create/update workflows remain open. Added a workspace administration screen for runtime and CRM profile status, current local demo identity and scope, supervisor/admin-only audit history, and the existing role-gated reset action. These UI destinations do not change the no-database/no-external-services run mode.
+**Broader workspace UI slice:** Added a standalone contact directory that composes contacts only from customer profiles visible to the selected identity, with search and preferred-channel filtering. Added a sales and campaign dashboard backed by deterministic in-memory records and scope-filtered `GET /api/v1/sales`. Relationship managers, supervisors, and administrators can create in-scope opportunities and move them through validated stages; writes are audited and reset with demo data. Campaign enrollment and response recording remain read-only. Added a workspace administration screen for runtime and CRM profile status, current local demo identity and scope, supervisor/admin-only audit history, and the existing role-gated reset action. These UI destinations do not change the no-database/no-external-services run mode.
 
 ### Optional M8 — Sales and campaign features
 
-The M7 UI and scoped read-only sales API now provide a visual destination for pipeline, campaigns, and responses. Add lead/opportunity/campaign create and update workflows, campaign response recording, and product recommendations after the core CRM + AI showcase is stable. Keep recommendations advisory and fixture-backed.
+The M7 UI now supports opportunity creation and stage changes, with campaigns and responses available as scoped read-only fixture data. Remaining work includes leads, campaign management and response recording, and product recommendations. Keep recommendations advisory and fixture-backed.
 
 ## 5. Demonstration Scenario Mapping
 

@@ -15,7 +15,7 @@ RELASI AI is planned as an enterprise CRM demonstration combining customer and c
 
 - Scoped customer search and a consolidated Customer 360 profile with synthetic contacts, products, interactions, and case snapshots.
 - A scoped analytics dashboard with customer and service KPIs, portfolio mix, case health, follow-up priorities, and recent activity.
-- Separate workspace screens for scoped contact lookup, synthetic sales and campaign summaries, and local administration with role-aware audit/reset controls.
+- Separate workspace screens for scoped contact lookup, synthetic opportunity and campaign workflows, and local administration with role-aware audit/reset controls.
 - Service cases, assignments, SLA escalation, history, and customer interactions.
 - A scope-limited service case queue with search, status/priority filters, and SLA attention indicators.
 - Deterministic mock AI and NLP for customer service inquiries.
@@ -107,6 +107,8 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `POST /api/v1/cases/{caseReference}/escalate` | Escalates an overdue active case (supervisor or administrator). |
 | `GET /api/v1/interactions?customerId=...` | Lists interactions in the selected user's scope. |
 | `GET /api/v1/sales` | Returns synthetic opportunities, campaigns, and responses filtered to the selected user's customer scope. |
+| `POST /api/v1/sales/opportunities` | Creates an in-scope synthetic opportunity (relationship manager, supervisor, or administrator). |
+| `POST /api/v1/sales/opportunities/{id}` | Moves an in-scope opportunity to a supported pipeline stage (relationship manager, supervisor, or administrator). |
 | `POST /api/v1/interactions` | Records an interaction for an in-scope customer, optionally linked to that customer's case. |
 | `GET /api/v1/audit` | Lists in-memory audit events (supervisor or administrator). |
 | `POST /api/v1/assistant/respond` | Analyzes a natural-language request and returns a deterministic mock response, structured NLP result, and execution trace. Optional `customerId` context is scope-checked. |
@@ -140,6 +142,7 @@ The **Reset demo data** action is available to supervisors and administrators. I
 - With Citra selected, ask “What should I do next for this customer?” The assistant prioritizes the open transfer dispute and cites synthetic product review guidance.
 - Ask “Find customers who have unresolved payment complaints and summarize their cases.” The assistant returns matching customers and cases visible to the selected identity.
 - Open Sales & campaigns to review seeded opportunities and campaign responses limited to the selected identity's customer scope.
+- As a relationship manager, create an opportunity for an in-scope customer and move it through Discovery, Qualification, Proposal, Closed Won, or Closed Lost. Opportunity writes are audited and reset with the seeded demo data.
 
 ### Troubleshooting
 

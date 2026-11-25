@@ -10,6 +10,7 @@ import com.pswied.core.crm.CrmModels.Customer360;
 import com.pswied.core.crm.DynamicsStyleMockCrmAdapter;
 import com.pswied.core.crm.InteractionService;
 import com.pswied.core.crm.SalesforceStyleMockCrmAdapter;
+import com.pswied.core.crm.SalesService;
 import com.pswied.core.ai.AssistantResponse;
 import com.pswied.core.ai.AssistantService;
 import com.pswied.core.ai.DeterministicNlpEngine;
@@ -40,6 +41,7 @@ public final class RelasiAiApplication {
     private static final AuditService AUDIT = new AuditService();
     private static final CaseService CASES = new CaseService(AUDIT);
     private static final InteractionService INTERACTIONS = new InteractionService(AUDIT);
+    private static final SalesService SALES = new SalesService();
     private static final KnowledgeService KNOWLEDGE = new KnowledgeService();
     private static final AssistantService ASSISTANT = new AssistantService(new DeterministicNlpEngine(), new MockLlmProvider(), KNOWLEDGE, CRM_PROFILE);
     private static final ToolRegistry TOOLS = new ToolRegistry(CRM, CASES, INTERACTIONS, KNOWLEDGE, AUDIT);
@@ -138,6 +140,10 @@ public final class RelasiAiApplication {
         }
         if (path.equals(API_PREFIX + "/interactions")) {
             handleInteractionRequest(exchange);
+            return;
+        }
+        if (path.equals(API_PREFIX + "/sales")) {
+            handleSalesRequest(exchange);
             return;
         }
         if (path.equals(API_PREFIX + "/audit")) {
@@ -451,6 +457,20 @@ public final class RelasiAiApplication {
         }
         List<Map<String, Object>> events = AUDIT.events().stream().map(CrmJson::auditEvent).toList();
         send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of("events", events)));
+    }
+
+    private static void handleSalesRequest(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            methodNotAllowed(exchange, "GET");
+            return;
+        }
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        send(exchange, 200, "application/json; charset=utf-8",
+                CrmJson.stringify(SALES.dashboard(CRM, user.customerScope())));
     }
 
     private static void resetDemoState(HttpExchange exchange) throws IOException {

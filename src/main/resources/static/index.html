@@ -349,6 +349,7 @@
     let caseQueueRequest = 0;
     let contactRequest = 0;
     let adminRequest = 0;
+    let salesRequest = 0;
     let contactRows = [];
     let toolDefinitions = [];
     const demoRoles = {};
@@ -396,7 +397,7 @@
       await loadCaseQueue();
       await loadContacts();
       await loadAdministration();
-      renderSalesWorkspace();
+      await loadSalesWorkspace();
       await loadKnowledgeDocuments();
       await loadTools().catch(error => toolOutput.replaceChildren(makeText('p', error.message, 'error')));
     }
@@ -579,21 +580,37 @@
       directory.append(wrapper);
     }
 
-    function renderSalesWorkspace() {
-      const opportunities = [
-        { name: 'Priority relationship review', customer: 'In-scope retail customer A', stage: 'QUALIFICATION', value: 'IDR 180m', owner: 'Relationship Manager' },
-        { name: 'Home financing discussion', customer: 'In-scope retail customer B', stage: 'PROPOSAL', value: 'IDR 650m', owner: 'Relationship Manager' },
-        { name: 'Business banking review', customer: 'In-scope business customer', stage: 'DISCOVERY', value: 'IDR 240m', owner: 'Relationship Manager' },
-        { name: 'Card upgrade follow-up', customer: 'In-scope retail customer C', stage: 'CLOSED_WON', value: 'IDR 36m', owner: 'Relationship Manager' }
-      ];
+    async function loadSalesWorkspace() {
+      const identityId = userSelect.value;
+      const requestId = ++salesRequest;
+      document.querySelector('#sales-metrics').replaceChildren(makeText('article', 'Loading scoped sales and campaign records…', 'metric-card'));
+      try {
+        const result = await api('/api/v1/sales');
+        if (identityId !== userSelect.value || requestId !== salesRequest) return;
+        renderSalesWorkspace(result);
+      } catch (error) {
+        if (identityId !== userSelect.value || requestId !== salesRequest) return;
+        document.querySelector('#sales-metrics').replaceChildren(makeText('p', error.message, 'error'));
+        document.querySelector('#sales-pipeline').replaceChildren();
+        document.querySelector('#campaign-list').replaceChildren();
+        document.querySelector('#campaign-responses').replaceChildren();
+      }
+    }
+
+    function renderSalesWorkspace(data) {
+      const opportunities = data.opportunities;
       const columns = [
         ['DISCOVERY', 'Discovery'], ['QUALIFICATION', 'Qualification'], ['PROPOSAL', 'Proposal'], ['CLOSED_WON', 'Closed won']
       ];
+      const openOpportunities = opportunities.filter(item => item.stage !== 'CLOSED_WON');
+      const pipelineValue = openOpportunities.reduce((total, item) => total + item.amount, 0);
+      const invited = data.campaigns.reduce((total, campaign) => total + campaign.invited, 0);
+      const responses = data.campaigns.reduce((total, campaign) => total + campaign.responses, 0);
       const totals = [
-        ['Open opportunities', opportunities.filter(item => item.stage !== 'CLOSED_WON').length, 'Illustrative pipeline records'],
-        ['Pipeline value', 'IDR 1.07bn', 'Synthetic opportunity estimates'],
-        ['Active campaigns', 2, 'Sample campaign programs'],
-        ['Engagement rate', '38%', 'Illustrative response metric']
+        ['Open opportunities', openOpportunities.length, `${opportunities.length} scoped opportunities`],
+        ['Pipeline value', formatCurrency(pipelineValue, 'IDR'), 'Synthetic opportunity estimates'],
+        ['Campaigns in scope', data.campaigns.length, `${invited} in-scope invitations`],
+        ['Engagement rate', invited ? `${Math.round(responses * 100 / invited)}%` : '—', `${responses} recorded responses`]
       ];
       document.querySelector('#sales-metrics').replaceChildren(...totals.map(([label, value, foot]) => {
         const card = makeText('article', '', 'metric-card');
@@ -610,29 +627,27 @@
         if (!items.length) column.append(makeText('p', 'No sample opportunities', 'muted'));
         for (const item of items) {
           const card = makeText('article', '', 'pipeline-card');
-          card.append(makeText('strong', item.name), makeText('small', `${item.customer} · ${item.value}`), makeText('small', item.owner));
+          card.append(makeText('strong', item.name), makeText('small', `${item.customerName} · ${formatCurrency(item.amount, item.currency)}`), makeText('small', item.owner.replaceAll('-', ' ')));
           column.append(card);
         }
         pipeline.append(column);
       }
-      const campaigns = [
-        ['Everyday banking check-in', 'CUSTOMER RETENTION · 128 invited · 42 responses'],
-        ['Digital banking adoption', 'DIGITAL ENGAGEMENT · 96 invited · 31 responses']
-      ];
       const campaignContainer = document.querySelector('#campaign-list'); campaignContainer.replaceChildren();
-      for (const [title, summary] of campaigns) {
+      if (!data.campaigns.length) campaignContainer.append(makeText('p', 'No campaigns target this identity’s customer scope.', 'muted'));
+      for (const campaign of data.campaigns) {
         const row = makeText('article', '', 'dashboard-row');
-        row.append(makeText('strong', title), makeText('small', summary)); campaignContainer.append(row);
+        row.append(makeText('strong', campaign.name), makeText('small', `${campaign.type.replaceAll('_', ' ')} · ${campaign.invited} invited · ${campaign.responses} responses · ${campaign.engagementRate}% engagement`)); campaignContainer.append(row);
       }
-      const responses = [
-        ['Customer contact A', 'Requested a relationship review · Email'],
-        ['Customer contact B', 'Opened the digital banking guide · Mobile banking'],
-        ['Customer contact C', 'Asked for a product consultation · Telephone']
-      ];
       const responseContainer = document.querySelector('#campaign-responses'); responseContainer.replaceChildren();
-      for (const [name, summary] of responses) {
-        const row = makeText('article', '', 'dashboard-row'); row.append(makeText('strong', name), makeText('small', summary)); responseContainer.append(row);
+      if (!data.responses.length) responseContainer.append(makeText('p', 'No campaign responses in this identity’s scope.', 'muted'));
+      for (const response of data.responses) {
+        const row = makeText('article', '', 'dashboard-row');
+        row.append(makeText('strong', response.customerName), makeText('small', `${response.summary} · ${response.channel.replaceAll('_', ' ')} · ${response.status.replaceAll('_', ' ')}`)); responseContainer.append(row);
       }
+    }
+
+    function formatCurrency(value, currency) {
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
     }
 
     async function loadAdministration() {
@@ -1400,6 +1415,7 @@
       loadCaseQueue();
       loadContacts();
       loadAdministration();
+      loadSalesWorkspace();
     });
     const navigationLinks = [...document.querySelectorAll('.nav-link')];
     let pendingNavigationLink = null;

@@ -125,7 +125,7 @@ flowchart TB
     AI --> DB
 ```
 
-The diagram is the target logical structure. The implementation currently includes the local HTTP shell, demo identity directory, provider-neutral CRM read contract, deterministic Customer 360 fixtures, scoped search/profile endpoints, in-memory case/interaction workflows with audit history, a deterministic mock assistant/NLP path, and a bundled lexical RAG flow. Customer profile writes and MCP tool workflows remain planned.
+The diagram is the target logical structure. The implementation currently includes the local HTTP shell, demo identity directory, provider-neutral CRM read contract, deterministic Customer 360 fixtures, scoped search/profile endpoints, in-memory case/interaction workflows with audit history, a deterministic mock assistant/NLP path, bundled lexical RAG, and an in-process MCP-compatible registry with confirmed writes. Customer profile writes and remote MCP transport remain outside the current scope.
 
 ### 5.2 Level 2 — Backend Modules
 
@@ -227,7 +227,7 @@ flowchart LR
     Browser -->|localhost| Frontend
 ```
 
-This topology is implemented as the initial shell: the JDK HTTP server serves the bundled page and API from one process. CRM, knowledge, and AI adapters are still planned. The application binds to loopback and starts with `./run.sh`; it does not require Docker, a database, network access, credentials, or external services.
+This topology is implemented in one process: the JDK HTTP server serves the bundled page and API, with in-memory CRM/case/interaction data, deterministic AI/RAG, and an in-process MCP-compatible registry. The CRM profile is selected with `RELASI_CRM_ADAPTER` (`DYNAMICS` by default or `SALESFORCE`); both profiles expose the same contract and deterministic fixtures. The application binds to loopback and starts with `./run.sh`; it does not require Docker, a database, network access, credentials, or external services.
 
 ### 7.2 Environment Notes
 
@@ -281,9 +281,9 @@ This topology is implemented as the initial shell: the JDK HTTP server serves th
 |---|---|---|---|
 | ADR-01 | Begin as a modular monolith with API-first boundaries | Fits the small demonstration repository and keeps modules separable without imposing distributed deployment overhead. | Proposed |
 | ADR-02 | Keep CRM and AI providers behind domain-owned interfaces | Allows mock-to-real provider replacement without changing business logic. | Required by requirements; implementation pending |
-| ADR-03 | Use deterministic mocks for initial inference and integrations | Enables repeatable scenarios without external accounts or network dependencies. | Required for initial AI provider; implementation pending |
+| ADR-03 | Use deterministic mocks for initial inference and integrations | Enables repeatable scenarios without external accounts or network dependencies. | Implemented for local AI and both selectable CRM profiles |
 | ADR-04 | Use in-memory repositories and bundled deterministic fixtures for the primary demo; isolate retrieval behind an interface | Makes the showcase runnable offline with no setup beyond the application runtime; state is intentionally ephemeral. | Proposed |
-| ADR-05 | Gate MCP writes with authorization and explicit confirmation | Prevents a model or tool call from independently committing sensitive actions. | Required by requirements; implementation pending |
+| ADR-05 | Gate MCP writes with authorization and explicit confirmation | Prevents a model or tool call from independently committing sensitive actions. | Implemented in the in-process mock profile |
 | ADR-06 | Return RAG sources and trace events separately from answer text | Supports verification, explainability, and troubleshooting. | Required by requirements; implementation pending |
 | ADR-07 | Use synthetic banking data throughout | Prevents real customer and transaction data from entering the demo. | Required by requirements |
 

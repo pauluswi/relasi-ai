@@ -9,11 +9,14 @@ import com.pswied.core.crm.CaseService;
 import com.pswied.core.crm.CrmModels.Customer360;
 import com.pswied.core.crm.DynamicsStyleMockCrmAdapter;
 import com.pswied.core.crm.InteractionService;
+import com.pswied.core.crm.SalesforceStyleMockCrmAdapter;
 import com.pswied.core.ai.AssistantResponse;
 import com.pswied.core.ai.AssistantService;
 import com.pswied.core.ai.DeterministicNlpEngine;
 import com.pswied.core.ai.MockLlmProvider;
 import com.pswied.core.knowledge.KnowledgeService;
+import com.pswied.core.mcp.ToolRegistry;
+import com.pswied.core.mcp.ToolUser;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,12 +33,14 @@ import java.util.concurrent.Executors;
 /** Starts the dependency-free, loopback-only RELASI AI showcase shell. */
 public final class RelasiAiApplication {
     private static final String API_PREFIX = "/api/v1";
-    private static final CrmAdapter CRM = new DynamicsStyleMockCrmAdapter();
+    private static final String CRM_PROFILE = configuredCrmProfile();
+    private static final CrmAdapter CRM = createCrmAdapter(CRM_PROFILE);
     private static final AuditService AUDIT = new AuditService();
     private static final CaseService CASES = new CaseService(AUDIT);
     private static final InteractionService INTERACTIONS = new InteractionService(AUDIT);
     private static final KnowledgeService KNOWLEDGE = new KnowledgeService();
-    private static final AssistantService ASSISTANT = new AssistantService(new DeterministicNlpEngine(), new MockLlmProvider(), KNOWLEDGE);
+    private static final AssistantService ASSISTANT = new AssistantService(new DeterministicNlpEngine(), new MockLlmProvider(), KNOWLEDGE, CRM_PROFILE);
+    private static final ToolRegistry TOOLS = new ToolRegistry(CRM, CASES, INTERACTIONS, KNOWLEDGE, AUDIT);
 
     private RelasiAiApplication() {
     }
@@ -69,6 +74,18 @@ public final class RelasiAiApplication {
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("RELASI_PORT must be a valid port number.");
         }
+    }
+
+    private static String configuredCrmProfile() {
+        String profile = System.getenv().getOrDefault("RELASI_CRM_ADAPTER", "DYNAMICS").strip().toUpperCase(Locale.ROOT);
+        if (!profile.equals("DYNAMICS") && !profile.equals("SALESFORCE")) {
+            throw new IllegalArgumentException("RELASI_CRM_ADAPTER must be DYNAMICS or SALESFORCE.");
+        }
+        return profile;
+    }
+
+    private static CrmAdapter createCrmAdapter(String profile) {
+        return profile.equals("SALESFORCE") ? new SalesforceStyleMockCrmAdapter() : new DynamicsStyleMockCrmAdapter();
     }
 
     private static void handle(HttpExchange exchange) throws IOException {
@@ -111,6 +128,14 @@ public final class RelasiAiApplication {
             handleKnowledgeRequest(exchange, path);
             return;
         }
+        if (path.equals(API_PREFIX + "/tools")) {
+            handleToolDiscovery(exchange);
+            return;
+        }
+        if (path.startsWith(API_PREFIX + "/tools/")) {
+            handleToolInvocation(exchange, path.substring((API_PREFIX + "/tools/").length()));
+            return;
+        }
         if (!"GET".equals(exchange.getRequestMethod())) {
             methodNotAllowed(exchange, "GET");
             return;
@@ -123,7 +148,8 @@ public final class RelasiAiApplication {
 
         switch (path) {
             case API_PREFIX + "/health" -> send(exchange, 200, "application/json; charset=utf-8",
-                    "{\"status\":\"UP\",\"mode\":\"mock\",\"storage\":\"in-memory\"}");
+                    CrmJson.stringify(Map.of("status", "UP", "mode", "mock", "storage", "in-memory",
+                            "crmAdapter", CRM_PROFILE, "integrations", List.of("local-mock-crm", "deterministic-mock-ai", "bundled-knowledge"))));
             case API_PREFIX + "/demo-users" -> send(exchange, 200, "application/json; charset=utf-8",
                     DemoUserDirectory.publicUsersJson());
             case API_PREFIX + "/session" -> serveSession(exchange);
@@ -430,8 +456,102 @@ public final class RelasiAiApplication {
                     INTERACTIONS.list(customerId, user.customerScope()), CASES.list(user.customerScope(), customerId, null));
         }
 
+        if (isCaseCreationRequest(message)) {
+            if (customerContext == null) {
+                badRequest(exchange, "Select an in-scope customer before asking the assistant to prepare a case.");
+                return;
+            }
+            prepareAssistantCase(exchange, user, message, customerContext);
+            return;
+        }
         AssistantResponse response = ASSISTANT.respond(message, customerContext);
         send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(response.asJsonValue()));
+    }
+
+    private static void prepareAssistantCase(HttpExchange exchange, DemoUser user, String message,
+                                             Customer360 customerContext) throws IOException {
+        long startedAt = System.nanoTime();
+        long nlpStarted = System.nanoTime();
+        com.pswied.core.ai.NlpResult analysis = ASSISTANT.analyze(message);
+        long nlpMillis = elapsedMillis(nlpStarted);
+        String category = analysis.suggestedCaseCategory();
+        String priority = isHighPriorityRequest(message) ? "HIGH" : analysis.suggestedPriority();
+            Map<String, String> arguments = Map.of(
+                    "customerId", customerContext.customer().id(),
+                    "category", category,
+                    "priority", priority,
+                    "subject", caseSubject(category),
+                    "description", message);
+        try {
+            // Discovery is performed against the in-process MCP-compatible registry before invocation.
+            long discoveryStarted = System.nanoTime();
+            List<Map<String, Object>> definitions = TOOLS.discover();
+            if (definitions.stream().noneMatch(definition -> "create_service_case".equals(definition.get("name")))) {
+                throw new ToolRegistry.ToolInvocationException(404, "tool_not_found", "Case creation tool is unavailable.");
+            }
+            AUDIT.record(user.id(), "MCP_TOOLS_DISCOVERED", "create_service_case", "SUCCESS");
+            long discoveryMillis = elapsedMillis(discoveryStarted);
+            var proposal = TOOLS.invoke(new ToolUser(user.id(), user.role(), user.customerScope()),
+                    "create_service_case", arguments);
+            List<AssistantResponse.TraceStep> trace = List.of(
+                    new AssistantResponse.TraceStep("INPUT_RECEIVED", "COMPLETED", 0, "Case creation request received."),
+                    new AssistantResponse.TraceStep("NLP_ANALYSIS", "COMPLETED", nlpMillis,
+                            "Suggested category " + category + " and priority " + priority + "."),
+                    new AssistantResponse.TraceStep("CRM_CONTEXT", "COMPLETED", 0,
+                            "Loaded authorized Customer 360 for " + customerContext.customer().id() + "."),
+                    new AssistantResponse.TraceStep("CRM_ADAPTER", "LOCAL_MOCK", 0,
+                            "CRM data served through the configured " + CRM_PROFILE + "-style in-memory adapter."),
+                    new AssistantResponse.TraceStep("RAG_RETRIEVAL", "SKIPPED", 0, "Case creation is a CRM action, not a knowledge question."),
+                    new AssistantResponse.TraceStep("MCP_TOOL_DISCOVERY", "COMPLETED", discoveryMillis,
+                            "Discovered create_service_case in the local tool registry."),
+                    new AssistantResponse.TraceStep("MCP_WRITE_PREVIEW", "AWAITING_CONFIRMATION", 0,
+                            "Prepared the exact case proposal; no case was created."),
+                    new AssistantResponse.TraceStep("FINAL_RESPONSE", "AWAITING_CONFIRMATION", 0,
+                            "Returned the proposal for explicit user review."));
+            AssistantResponse response = new AssistantResponse(message,
+                    "I prepared a service case for your review. No case has been created yet; confirm the exact preview below to continue.",
+                    "DETERMINISTIC_MOCK_ORCHESTRATION", customerContext.customer().id(), analysis,
+                    false, false, List.of(), trace, elapsedMillis(startedAt));
+            Map<String, Object> responseBody = new LinkedHashMap<>(response.asJsonValue());
+            responseBody.put("toolName", "create_service_case");
+            responseBody.put("toolInvocation", proposal.payload());
+            send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(responseBody));
+        } catch (ToolRegistry.ToolInvocationException exception) {
+            send(exchange, exception.statusCode(), "application/json; charset=utf-8",
+                    CrmJson.stringify(Map.of("error", exception.code(), "message", exception.getMessage())));
+        }
+    }
+
+    private static long elapsedMillis(long startedAt) {
+        return Math.max(0, (System.nanoTime() - startedAt) / 1_000_000);
+    }
+
+    private static boolean isCaseCreationRequest(String message) {
+        String text = message.toLowerCase(Locale.ROOT);
+        if (text.startsWith("please ")) text = text.substring("please ".length()).stripLeading();
+        if (text.startsWith("tolong ")) text = text.substring("tolong ".length()).stripLeading();
+        boolean imperative = text.startsWith("create ") || text.startsWith("open ") || text.startsWith("log ")
+                || text.startsWith("raise ") || text.startsWith("buat ") || text.startsWith("buka ") || text.startsWith("catat ");
+        return imperative && (text.contains("case") || text.contains("complaint") || text.contains("ticket")
+                || text.contains("kasus") || text.contains("tiket"));
+    }
+
+    private static boolean isHighPriorityRequest(String message) {
+        String text = message.toLowerCase(Locale.ROOT);
+        return text.contains("high-priority") || text.contains("high priority") || text.contains("urgent")
+                || text.contains("prioritas tinggi") || text.contains("prioritas mendesak");
+    }
+
+    private static String caseSubject(String category) {
+        return switch (category) {
+            case "TRANSACTION_DISPUTE" -> "Transaction dispute reported to assistant";
+            case "PAYMENT_COMPLAINT" -> "Payment complaint reported to assistant";
+            case "LOAN_INQUIRY" -> "Loan inquiry reported to assistant";
+            case "ACCOUNT_INQUIRY" -> "Account inquiry reported to assistant";
+            case "CARD_ISSUE" -> "Card issue reported to assistant";
+            case "MOBILE_BANKING_ISSUE" -> "Mobile banking issue reported to assistant";
+            default -> "Customer service request from assistant";
+        };
     }
 
     private static void handleKnowledgeRequest(HttpExchange exchange, String path) throws IOException {
@@ -460,6 +580,44 @@ public final class RelasiAiApplication {
                 .map(KnowledgeService.RetrievedChunk::asJsonValue).toList();
         send(exchange, 200, "application/json; charset=utf-8",
                 CrmJson.stringify(Map.of("query", query, "results", results, "total", results.size(), "mode", "synthetic-mock")));
+    }
+
+    private static void handleToolDiscovery(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            methodNotAllowed(exchange, "GET");
+            return;
+        }
+        if (requestUser(exchange) == null) {
+            unauthorized(exchange);
+            return;
+        }
+        List<Map<String, Object>> tools = TOOLS.discover();
+        AUDIT.record(requestUser(exchange).id(), "MCP_TOOLS_DISCOVERED", "tool-registry", "SUCCESS");
+        send(exchange, 200, "application/json; charset=utf-8",
+                CrmJson.stringify(Map.of("protocol", "MCP-compatible", "transport", "in-process",
+                        "tools", tools, "total", tools.size())));
+    }
+
+    private static void handleToolInvocation(HttpExchange exchange, String encodedToolName) throws IOException {
+        if (!"POST".equals(exchange.getRequestMethod())) {
+            methodNotAllowed(exchange, "POST");
+            return;
+        }
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        Map<String, String> arguments = readForm(exchange);
+        if (arguments == null) return;
+        String toolName = URLDecoder.decode(encodedToolName, StandardCharsets.UTF_8);
+        try {
+            var result = TOOLS.invoke(new ToolUser(user.id(), user.role(), user.customerScope()), toolName, arguments);
+            send(exchange, result.statusCode(), "application/json; charset=utf-8", CrmJson.stringify(result.payload()));
+        } catch (ToolRegistry.ToolInvocationException exception) {
+            send(exchange, exception.statusCode(), "application/json; charset=utf-8",
+                    CrmJson.stringify(Map.of("error", exception.code(), "message", exception.getMessage())));
+        }
     }
 
     private static Map<String, String> readForm(HttpExchange exchange) throws IOException {

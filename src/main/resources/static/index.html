@@ -44,6 +44,8 @@
     .assistant-answer { border-left: 3px solid #126b65; padding: .7rem 1rem; margin: 1rem 0; background: #f6faf9; line-height: 1.55; }
     .analysis-pills { display: flex; flex-wrap: wrap; gap: .45rem; margin: .8rem 0; }
     .analysis-pill { background: #edf2f7; color: #33465a; border-radius: 99px; padding: .28rem .6rem; font-size: .82rem; }
+    .confirmation-card { border: 1px solid #e5b65c; border-radius: 9px; background: #fffaf0; padding: 1rem; margin-top: .8rem; }
+    .tool-output { max-height: 520px; overflow: auto; }
     .profile-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
     .profile-heading h2 { margin-bottom: .35rem; }
     .muted, .empty { color: #5b6877; line-height: 1.5; }
@@ -99,6 +101,17 @@
       <h2 id="knowledge-title">Knowledge library <span class="badge">Synthetic documents</span></h2>
       <div id="knowledge-documents" class="customer-list"><p class="empty">Loading bundled knowledge documents…</p></div>
     </section>
+    <section class="card" aria-labelledby="tool-title">
+      <h2 id="tool-title">MCP tool explorer <span class="badge">In-process mock</span></h2>
+      <p class="muted">Inspect MCP-compatible JSON schemas and invoke tools within the selected user's authorization scope. Write tools require a separate confirmation after preview.</p>
+      <div class="toolbar" style="grid-template-columns: minmax(220px, 1fr) auto;">
+        <div><label for="tool-select">Available tool</label><select id="tool-select"></select></div>
+        <button id="refresh-tools" type="button">Refresh tools</button>
+      </div>
+      <div id="tool-definition" class="muted" style="margin: .7rem 0"></div>
+      <form id="tool-form" class="form-grid"></form>
+      <div id="tool-output" aria-live="polite"></div>
+    </section>
   </main>
   <script>
     const healthBadge = document.querySelector('#health');
@@ -108,6 +121,10 @@
     const detail = document.querySelector('#customer-detail');
     const assistantQuestion = document.querySelector('#assistant-question');
     const assistantResult = document.querySelector('#assistant-result');
+    const toolSelect = document.querySelector('#tool-select');
+    const toolForm = document.querySelector('#tool-form');
+    const toolOutput = document.querySelector('#tool-output');
+    let toolDefinitions = [];
     const demoRoles = {};
     let selectedCustomerId = '';
 
@@ -132,6 +149,7 @@
       }
       await searchCustomers();
       await loadKnowledgeDocuments();
+      await loadTools();
     }
 
     async function searchCustomers() {
@@ -465,6 +483,109 @@
       }
     }
 
+    async function loadTools() {
+      const response = await api('/api/v1/tools');
+      toolDefinitions = response.tools;
+      toolSelect.replaceChildren();
+      for (const tool of toolDefinitions) {
+        const access = tool.readOnly ? 'read' : 'write · confirmation';
+        toolSelect.append(option(tool.name, `${tool.name} (${access})`));
+      }
+      renderToolDefinition();
+    }
+
+    function renderToolDefinition() {
+      const tool = toolDefinitions.find(candidate => candidate.name === toolSelect.value);
+      toolForm.replaceChildren();
+      toolOutput.replaceChildren();
+      if (!tool) return;
+      const description = document.querySelector('#tool-definition');
+      description.textContent = `${tool.description} ${tool.readOnly ? 'Read-only operation.' : `Write operation. Allowed roles: ${tool.allowedRoles.join(', ')}.`}`;
+      const required = new Set(tool.inputSchema.required);
+      for (const [name, property] of Object.entries(tool.inputSchema.properties)) {
+        const wrapper = document.createElement('div');
+        const label = makeText('label', `${name.replaceAll(/([A-Z])/g, ' $1').replaceAll('_', ' ')}${required.has(name) ? ' *' : ''}`);
+        let input;
+        if (property.enum) {
+          input = document.createElement('select');
+          for (const value of property.enum) input.append(option(value, value.replaceAll('_', ' ')));
+        } else if (property.maxLength > 120) {
+          input = document.createElement('textarea');
+          input.rows = Math.min(6, Math.max(3, Math.ceil(property.maxLength / 400)));
+        } else {
+          input = document.createElement('input');
+          input.type = 'text';
+        }
+        input.name = name;
+        input.maxLength = property.maxLength;
+        input.required = required.has(name);
+        input.setAttribute('aria-label', name);
+        if (property.description) input.title = property.description;
+        wrapper.append(label, input);
+        if (property.maxLength > 120) wrapper.className = 'wide';
+        toolForm.append(wrapper);
+      }
+      const actions = makeText('div', '', 'form-actions wide');
+      const invoke = makeText('button', tool.readOnly ? 'Run read-only tool' : 'Prepare write preview');
+      invoke.type = 'submit';
+      actions.append(invoke);
+      toolForm.append(actions);
+    }
+
+    async function invokeTool(event) {
+      event.preventDefault();
+      const tool = toolDefinitions.find(candidate => candidate.name === toolSelect.value);
+      if (!tool) return;
+      toolOutput.replaceChildren(makeText('p', 'Invoking local tool…', 'muted'));
+      const values = Object.fromEntries(new FormData(toolForm));
+      try {
+        const response = await api(`/api/v1/tools/${encodeURIComponent(tool.name)}`, {
+          method: 'POST', body: new URLSearchParams(values)
+        });
+        renderToolResult(response, tool.name);
+      } catch (error) {
+        toolOutput.replaceChildren(makeText('p', error.message, 'error'));
+      }
+    }
+
+    function renderToolResult(response, toolName, target = toolOutput, append = false) {
+      if (!append) target.replaceChildren();
+      if (response.confirmationRequired) {
+        const card = makeText('section', '', 'confirmation-card');
+        card.append(makeText('strong', 'Review this proposed write. No business state has changed yet.'));
+        card.append(makeText('p', `This preview expires at ${formatDate(response.expiresAt)}. Confirmation is tied to your current demo identity and this exact proposal.`, 'muted'));
+        const preview = makeText('pre', JSON.stringify(response.preview, null, 2), 'tool-output');
+        card.append(preview);
+        const actions = makeText('div', '', 'form-actions');
+        const confirm = makeText('button', 'Confirm and execute');
+        confirm.type = 'button';
+        confirm.addEventListener('click', async () => {
+          confirm.disabled = true;
+          try {
+            const completed = await api(`/api/v1/tools/${encodeURIComponent(toolName)}`, {
+              method: 'POST', body: new URLSearchParams({ confirmationToken: response.confirmationToken })
+            });
+            renderToolResult(completed, toolName, target);
+            if (selectedCustomerId) await loadCustomer(selectedCustomerId);
+          } catch (error) {
+            confirm.disabled = false;
+            target.append(makeText('p', error.message, 'error'));
+          }
+        });
+        const cancel = makeText('button', 'Dismiss preview');
+        cancel.type = 'button';
+        cancel.addEventListener('click', () => target.replaceChildren(makeText('p', 'Preview dismissed. No business state changed; the token expires automatically in five minutes.', 'muted')));
+        actions.append(confirm, cancel);
+        card.append(actions);
+        target.append(card);
+        return;
+      }
+      target.append(makeText('p', `${response.status} · ${toolName} · ${response.readOnly ? 'read-only' : 'write completed'}`, 'badge'));
+      target.append(makeText('pre', JSON.stringify(response.result, null, 2), 'tool-output'));
+      const traceList = target.querySelector('.trace-list');
+      if (traceList) traceList.append(makeText('li', `MCP tool call · COMPLETED · ${toolName} returned ${response.status}.`));
+    }
+
     async function askAssistant() {
       const message = assistantQuestion.value.trim();
       if (!message) {
@@ -523,6 +644,7 @@
       trace.className = 'trace-list';
       for (const step of response.trace) trace.append(makeText('li', `${step.stage.replaceAll('_', ' ')} · ${step.status} · ${step.durationMs} ms · ${step.detail}`));
       assistantResult.append(trace);
+      if (response.toolInvocation) renderToolResult(response.toolInvocation, response.toolName, assistantResult, true);
     }
 
     function formatBalance(product) {
@@ -539,13 +661,18 @@
 
     fetch('/api/v1/health')
       .then(response => response.json())
-      .then(data => { healthBadge.textContent = `Local runtime ${data.status} · ${data.mode} mode`; })
+      .then(data => { healthBadge.textContent = `Local runtime ${data.status} · ${data.crmAdapter} mock CRM`; })
       .catch(() => { healthBadge.textContent = 'Local runtime unavailable'; });
 
     userSelect.addEventListener('change', searchCustomers);
     document.querySelector('#search-button').addEventListener('click', searchCustomers);
     searchInput.addEventListener('keydown', event => { if (event.key === 'Enter') searchCustomers(); });
     document.querySelector('#ask-assistant').addEventListener('click', askAssistant);
+    toolSelect.addEventListener('change', renderToolDefinition);
+    document.querySelector('#refresh-tools').addEventListener('click', () => loadTools().catch(error => {
+      toolOutput.replaceChildren(makeText('p', error.message, 'error'));
+    }));
+    toolForm.addEventListener('submit', invokeTool);
     loadUsers().catch(error => { customerList.replaceChildren(makeText('p', error.message, 'error')); });
   </script>
 </body>

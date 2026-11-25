@@ -75,17 +75,9 @@ public final class CaseService {
 
     public synchronized ServiceCase updateStatus(String actorId, String reference, String status, String resolution,
                                                  List<String> permittedCustomerIds) {
-        ServiceCase current = requireCase(reference, permittedCustomerIds);
+        ServiceCase current = validateStatusChange(reference, status, resolution, permittedCustomerIds);
         String nextStatus = normalize(status);
-        require(Set.of("OPEN", "IN_PROGRESS", "WAITING_FOR_CUSTOMER", "RESOLVED", "CLOSED").contains(nextStatus),
-                "Unsupported case status.");
-        require(allowedTransition(current.status(), nextStatus),
-                "Case cannot transition from " + current.status() + " to " + nextStatus + ".");
         String normalizedResolution = resolution == null ? null : resolution.strip();
-        require(!"RESOLVED".equals(nextStatus) || (normalizedResolution != null && !normalizedResolution.isBlank()),
-                "A resolution note is required when resolving a case.");
-        require(normalizedResolution == null || normalizedResolution.length() <= 2000,
-                "Resolution note must be 2,000 characters or fewer.");
 
         String timestamp = Instant.now().toString();
         String details = "Status changed from " + current.status() + " to " + nextStatus + ".";
@@ -97,11 +89,25 @@ public final class CaseService {
         return updated;
     }
 
+    public synchronized ServiceCase validateStatusChange(String reference, String status, String resolution,
+                                                         List<String> permittedCustomerIds) {
+        ServiceCase current = requireCase(reference, permittedCustomerIds);
+        String nextStatus = normalize(status);
+        require(Set.of("OPEN", "IN_PROGRESS", "WAITING_FOR_CUSTOMER", "RESOLVED", "CLOSED").contains(nextStatus),
+                "Unsupported case status.");
+        require(allowedTransition(current.status(), nextStatus),
+                "Case cannot transition from " + current.status() + " to " + nextStatus + ".");
+        String normalizedResolution = resolution == null ? null : resolution.strip();
+        require(!"RESOLVED".equals(nextStatus) || (normalizedResolution != null && !normalizedResolution.isBlank()),
+                "A resolution note is required when resolving a case.");
+        require(normalizedResolution == null || normalizedResolution.length() <= 2000,
+                "Resolution note must be 2,000 characters or fewer.");
+        return current;
+    }
+
     public synchronized ServiceCase assign(String actorId, String reference, String assigneeId,
                                            List<String> permittedCustomerIds) {
-        ServiceCase current = requireCase(reference, permittedCustomerIds);
-        require(ACTIVE_STATUSES.contains(current.status()), "Only active cases can be assigned.");
-        require("service-officer".equals(assigneeId), "Assignee must be a seeded customer service officer.");
+        ServiceCase current = validateAssignment(reference, assigneeId, permittedCustomerIds);
         String timestamp = Instant.now().toString();
         ServiceCase updated = copy(current, current.status(), current.priority(), assigneeId, timestamp,
                 current.resolution(), current.escalated(),
@@ -109,6 +115,14 @@ public final class CaseService {
         cases.put(reference, updated);
         audit.record(actorId, "CASE_ASSIGNED", reference + "/" + assigneeId, "SUCCESS");
         return updated;
+    }
+
+    public synchronized ServiceCase validateAssignment(String reference, String assigneeId,
+                                                       List<String> permittedCustomerIds) {
+        ServiceCase current = requireCase(reference, permittedCustomerIds);
+        require(ACTIVE_STATUSES.contains(current.status()), "Only active cases can be assigned.");
+        require("service-officer".equals(assigneeId), "Assignee must be a seeded customer service officer.");
+        return current;
     }
 
     public synchronized ServiceCase escalate(String actorId, String reference, List<String> permittedCustomerIds) {

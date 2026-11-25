@@ -2,14 +2,14 @@
 
 ![Java 25](https://img.shields.io/badge/Java-25-orange?logo=openjdk&logoColor=white)
 ![JDK-only bootstrap](https://img.shields.io/badge/bootstrap-JDK%20only-brightgreen?logo=openjdk&logoColor=white)
-![Showcase status](https://img.shields.io/badge/status-planning-blue)
+![Showcase status](https://img.shields.io/badge/status-active%20development-blue)
 ![Mock mode](https://img.shields.io/badge/run%20mode-offline%20mocks-informational)
 
 **A mock-first, offline Cognitive CRM showcase for synthetic banking workflows.**
 
 RELASI AI is planned as an enterprise CRM demonstration combining customer and case management with AI assistance, knowledge retrieval, and controlled tool use. Its primary showcase mode is designed to run locally without a database, Docker, network access, credentials, or external systems.
 
-> **Project status:** The local runtime, scoped Customer 360, case/interaction workflows, deterministic AI/NLP, and bundled mock RAG flow are implemented. MCP tool workflows remain planned; see the [development plan](docs/DEVELOPMENT_PLAN.md).
+> **Project status:** The local runtime, scoped Customer 360, case/interaction workflows, deterministic AI/NLP, bundled mock RAG, MCP-compatible tool workflows, and selectable CRM mock profiles are implemented. See the [development plan](docs/DEVELOPMENT_PLAN.md) for remaining work.
 
 ## What the showcase will demonstrate
 
@@ -37,6 +37,8 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080). The server binds to loopbac
 RELASI_PORT=8090 ./run.sh
 ```
 
+Select the CRM adapter profile with `RELASI_CRM_ADAPTER` (`DYNAMICS` by default, or `SALESFORCE`). Both profiles use the same deterministic fixture set and preserve the same canonical CRM contract and demo outcomes.
+
 The script compiles the Java sources with the JDK, bundles local resources, and starts the application. Press `Ctrl+C` to stop it. Build output is temporary and ignored by Git.
 
 ### Starter endpoints
@@ -60,8 +62,10 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `POST /api/v1/assistant/respond` | Analyzes a natural-language request and returns a deterministic mock response, structured NLP result, and execution trace. Optional `customerId` context is scope-checked. |
 | `GET /api/v1/knowledge/documents` | Lists bundled synthetic knowledge sources and chunk counts. |
 | `GET /api/v1/knowledge/search?q=...` | Searches the local synthetic knowledge corpus and returns ranked passages with stable source references. |
+| `GET /api/v1/tools` | Discovers in-process MCP-compatible tool definitions and JSON input schemas. |
+| `POST /api/v1/tools/{toolName}` | Invokes a discovered tool using form fields defined by its schema. Write tools return a preview and actor-bound confirmation token; submit only that token to confirm. |
 
-Write endpoints accept `application/x-www-form-urlencoded` fields. The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; customer profile changes are not implemented.
+Write endpoints accept `application/x-www-form-urlencoded` fields. The assistant also prepares a case preview when asked with an imperative such as “Create a high-priority complaint case for this customer.” No case is created until the user confirms that exact preview. The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; customer profile changes are not implemented.
 
 ## Intended mock-mode behavior
 
@@ -79,7 +83,7 @@ Write endpoints accept `application/x-www-form-urlencoded` fields. The demo iden
 
 ## Demonstration scenarios
 
-The requirements define these repeatable scenarios. Customer 360, complaint classification, and the grounded knowledge answer are implemented in the current slices; AI-confirmed writes, next-best-action, and multi-customer case aggregation remain planned.
+The requirements define these repeatable scenarios. Customer 360, complaint classification, grounded knowledge answers, and confirmed AI-assisted case creation are implemented in the current slices; next-best-action and multi-customer case aggregation remain planned.
 
 1. Summarize a customer's relationship with the bank.
 2. Classify a payment complaint and extract relevant details.

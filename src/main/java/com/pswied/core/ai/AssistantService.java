@@ -13,11 +13,13 @@ public final class AssistantService {
     private final NlpEngine nlpEngine;
     private final LlmProvider llmProvider;
     private final KnowledgeService knowledgeService;
+    private final String crmProfile;
 
-    public AssistantService(NlpEngine nlpEngine, LlmProvider llmProvider, KnowledgeService knowledgeService) {
+    public AssistantService(NlpEngine nlpEngine, LlmProvider llmProvider, KnowledgeService knowledgeService, String crmProfile) {
         this.nlpEngine = nlpEngine;
         this.llmProvider = llmProvider;
         this.knowledgeService = knowledgeService;
+        this.crmProfile = crmProfile;
     }
 
     public AssistantResponse respond(String message, Customer360 customerContext) {
@@ -39,6 +41,8 @@ public final class AssistantService {
         } else {
             trace.add(new TraceStep("CRM_CONTEXT", "SKIPPED", 0, "No customer context was selected."));
         }
+        trace.add(new TraceStep("CRM_ADAPTER", "LOCAL_MOCK", 0,
+                "CRM data served through the configured " + crmProfile + "-style in-memory adapter."));
 
         boolean knowledgeQuestion = isKnowledgeQuestion(message, analysis);
         List<RetrievedChunk> sources = List.of();
@@ -75,9 +79,18 @@ public final class AssistantService {
             trace.add(new TraceStep("MOCK_LLM", "COMPLETED", elapsedMillis(llmStarted), "Generated deterministic mock response."));
         }
 
+        trace.add(new TraceStep("MCP_TOOL_DISCOVERY", "SKIPPED", 0, "No MCP tool was needed for this request."));
+        trace.add(new TraceStep("MCP_TOOL_CALL", "SKIPPED", 0, "No MCP tool was invoked."));
+        trace.add(new TraceStep("FINAL_RESPONSE", abstained ? "ABSTAINED" : "COMPLETED", 0,
+                abstained ? "Returned an abstention because no reliable source was found." : "Prepared the response for the authorized user."));
+
         return new AssistantResponse(message, answer, llmProvider.providerId(),
                 customerContext == null ? null : customerContext.customer().id(), analysis, grounded, abstained,
                 sources, trace, elapsedMillis(startedAt));
+    }
+
+    public NlpResult analyze(String message) {
+        return nlpEngine.analyze(message);
     }
 
     private static boolean isKnowledgeQuestion(String message, NlpResult analysis) {

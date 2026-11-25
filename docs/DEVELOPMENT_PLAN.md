@@ -98,7 +98,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Demo/exit:** The payment complaint example returns repeatable intent, sentiment, amount, date, suggested category, and priority with a visible NLP trace.
 
-**Implemented slice:** `POST /api/v1/assistant/respond` runs deterministic intent, sentiment, language, and entity extraction, then calls the mock LLM adapter. It can summarize an in-scope selected customer's products, cases, and recent interactions. The response includes typed NLP results, the mock-provider identifier, and per-stage trace timing; the bundled UI displays the answer, extracted fields, and trace. It does not retrieve banking knowledge or claim to verify transactions; RAG and source attribution remain in M4.
+**Implemented slice:** `POST /api/v1/assistant/respond` runs deterministic intent, sentiment, language, and entity extraction, then calls the mock LLM adapter. It can summarize an in-scope selected customer's products, cases, and recent interactions. The response includes typed NLP results, the mock-provider identifier, and per-stage trace timing; the bundled UI displays the answer, extracted fields, and trace. This service-assistance path does not verify transactions; policy questions use the separate M4 RAG flow.
 
 ### M4 — Knowledge and RAG — started
 
@@ -113,7 +113,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Implemented slice:** Three synthetic banking guidance documents are bundled as versioned Markdown resources. Startup parses their metadata, chunks their content, and indexes them in memory. Deterministic lexical retrieval ranks passages and returns stable document/chunk references, snippets, and relevance scores. Policy/procedure requests pass bounded retrieved passages to the mock LLM; the response keeps citations separate from generated text. If retrieval returns no passage above the threshold, generation is skipped and the assistant abstains. The UI lists the corpus and displays citations and excerpts. Document upload, editing, and richer retrieval evaluation remain future work.
 
-### M5 — MCP-compatible tools and confirmed writes
+### M5 — MCP-compatible tools and confirmed writes — implemented; verification pending
 
 **Work:**
 
@@ -125,7 +125,9 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Demo/exit:** Read tools operate within the user's scope. A case is not created until the authorized user confirms the displayed proposal; confirmation and result are auditable.
 
-### M6 — Interchangeable mocks and execution trace
+**Implemented slice:** The in-process registry discovers all nine required tool names with MCP-compatible JSON schemas, validates required/enum/length/unknown fields, separates read and write operations, applies role and customer-scope checks, and audits discovery and invocation. Write calls prepare immutable previews and issue five-minute, actor-bound, one-use confirmation tokens; execution rechecks authorization and uses only the stored arguments. The tool explorer invokes reads and confirmed writes. Imperative assistant case-creation requests prepare a case preview through `create_service_case`; no record changes before confirmation. Remote MCP transport remains outside the zero-dependency run mode.
+
+### M6 — Interchangeable mocks and execution trace — implemented; verification pending
 
 **Work:**
 
@@ -135,6 +137,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 - Apply role controls and masking to trace content; show all integrations as mock/local.
 
 **Demo/exit:** Adapter switching preserves outcomes; authorized users can inspect the full trace, and restricted customer data stays out of unauthorized results.
+
+**Implemented slice:** `RELASI_CRM_ADAPTER` selects the Dynamics-style or Salesforce-style in-memory adapter profile; both expose the same provider-neutral contract and deterministic fixtures. The health endpoint and UI identify the selected profile. Assistant traces now identify the local CRM profile and include explicit skipped stages for unused tools plus a final-response event; assistant-prepared case proposals include the adapter and confirmation outcome stages. Trace details contain only request metadata and authorized customer identifiers, not contact or account secrets.
 
 ### M7 — Showcase polish and release readiness
 

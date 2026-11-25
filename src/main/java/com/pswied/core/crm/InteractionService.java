@@ -26,6 +26,12 @@ public final class InteractionService {
         seedInteractions();
     }
 
+    public synchronized void reset() {
+        interactions.clear();
+        nextNumber.set(1007);
+        seedInteractions();
+    }
+
     public List<Interaction> list(String customerId, List<String> permittedCustomerIds) {
         if (customerId != null && !permittedCustomerIds.contains(customerId)) {
             return List.of();

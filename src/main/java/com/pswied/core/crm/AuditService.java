@@ -16,6 +16,10 @@ public final class AuditService {
         return List.copyOf(events);
     }
 
+    public synchronized void reset() {
+        events.clear();
+    }
+
     public record AuditEvent(String occurredAt, String actorId, String action, String target, String outcome) {
     }
 }

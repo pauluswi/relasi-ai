@@ -158,7 +158,7 @@ erDiagram
     AI_EXECUTION ||--o{ AI_TRACE_EVENT : records
 ```
 
-The model is conceptual and guides in-memory repository structures for the primary showcase profile. Customer, account, payment, and transaction values are synthetic demonstration data. Authorization policy and reset behavior must be made explicit during implementation.
+The model is conceptual and guides in-memory repository structures for the primary showcase profile. Customer, account, payment, and transaction values are synthetic demonstration data. Authorization is enforced at API and tool boundaries. Supervisors and administrators can restore mutable demo state to its seeded values; all in-memory state is also restored on process restart.
 
 ## 6. Runtime View
 
@@ -231,7 +231,7 @@ This topology is implemented in one process: the JDK HTTP server serves the bund
 
 ### 7.2 Environment Notes
 
-- Local demo uses synthetic fixtures and deterministic in-process integrations by default. Include a reset-to-demo-state action; mutable state and audit history reset on restart.
+- Local demo uses synthetic fixtures and deterministic in-process integrations by default. Supervisors and administrators have a reset-to-demo-state action; mutable state and audit history reset on restart.
 - Mock mode requires no credentials. Optional configuration should use safe defaults and a small set of documented environment variables or a local config file.
 - Database persistence, Docker/Compose, Kubernetes, external CRM connectivity, and regulated banking operation are outside the primary showcase run mode.
 

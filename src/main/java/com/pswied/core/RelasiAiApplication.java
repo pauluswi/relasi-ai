@@ -21,6 +21,7 @@ import com.pswied.core.mcp.ToolUser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.BindException;
 import java.nio.charset.StandardCharsets;
 import java.net.URLDecoder;
 import java.util.LinkedHashMap;
@@ -46,8 +47,22 @@ public final class RelasiAiApplication {
     }
 
     public static void main(String[] args) throws IOException {
-        int port = configuredPort();
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        int port;
+        try {
+            port = configuredPort();
+        } catch (IllegalArgumentException exception) {
+            System.err.println("Configuration error: " + exception.getMessage());
+            System.exit(2);
+            return;
+        }
+        HttpServer server;
+        try {
+            server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        } catch (BindException exception) {
+            System.err.printf("Startup error: cannot bind to 127.0.0.1:%d; the port may already be in use. Set RELASI_PORT to another port.%n", port);
+            System.exit(1);
+            return;
+        }
         ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         server.setExecutor(executor);
         server.createContext("/", RelasiAiApplication::handle);
@@ -130,6 +145,10 @@ public final class RelasiAiApplication {
         }
         if (path.equals(API_PREFIX + "/tools")) {
             handleToolDiscovery(exchange);
+            return;
+        }
+        if (path.equals(API_PREFIX + "/reset")) {
+            resetDemoState(exchange);
             return;
         }
         if (path.startsWith(API_PREFIX + "/tools/")) {
@@ -423,6 +442,29 @@ public final class RelasiAiApplication {
         }
         List<Map<String, Object>> events = AUDIT.events().stream().map(CrmJson::auditEvent).toList();
         send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of("events", events)));
+    }
+
+    private static void resetDemoState(HttpExchange exchange) throws IOException {
+        if (!"POST".equals(exchange.getRequestMethod())) {
+            methodNotAllowed(exchange, "POST");
+            return;
+        }
+        DemoUser user = requestUser(exchange);
+        if (user == null) {
+            unauthorized(exchange);
+            return;
+        }
+        if (!isSupervisor(user)) {
+            forbidden(exchange);
+            return;
+        }
+        CASES.reset();
+        INTERACTIONS.reset();
+        TOOLS.clearPendingConfirmations();
+        AUDIT.reset();
+        AUDIT.record(user.id(), "DEMO_STATE_RESET", "in-memory-demo", "SUCCESS");
+        send(exchange, 200, "application/json; charset=utf-8",
+                CrmJson.stringify(Map.of("status", "RESET", "message", "Mutable demo state and audit history were restored to seeded values.")));
     }
 
     private static void handleAssistantRequest(HttpExchange exchange) throws IOException {

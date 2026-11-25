@@ -32,6 +32,12 @@ public final class CaseService {
         seedCases();
     }
 
+    public synchronized void reset() {
+        cases.clear();
+        nextNumber.set(59);
+        seedCases();
+    }
+
     public List<ServiceCase> list(List<String> permittedCustomerIds, String customerId, String status) {
         String normalizedStatus = status == null || status.isBlank() || "ALL".equalsIgnoreCase(status)
                 ? null : status.strip().toUpperCase(Locale.ROOT);

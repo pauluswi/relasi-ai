@@ -66,7 +66,10 @@
 <body>
   <header>
     <div><h1 class="brand">RELASI AI</h1><p>Customer relationship workspace · Synthetic demo data</p></div>
-    <span class="badge" id="health">Checking local runtime…</span>
+    <div class="toolbar" style="grid-template-columns: auto auto; align-items: center">
+      <span class="badge" id="health">Checking local runtime…</span>
+      <button id="reset-demo" type="button" title="Restore seeded cases and interactions" disabled>Reset demo data</button>
+    </div>
   </header>
   <main>
     <section class="card">
@@ -115,6 +118,7 @@
   </main>
   <script>
     const healthBadge = document.querySelector('#health');
+    const resetButton = document.querySelector('#reset-demo');
     const userSelect = document.querySelector('#demo-user');
     const searchInput = document.querySelector('#search');
     const customerList = document.querySelector('#customer-list');
@@ -147,9 +151,24 @@
         option.textContent = `${user.displayName} · ${user.role.replaceAll('_', ' ')}`;
         userSelect.append(option);
       }
+      updateResetButton();
       await searchCustomers();
       await loadKnowledgeDocuments();
       await loadTools();
+    }
+
+    function updateResetButton() {
+      resetButton.disabled = !['CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(demoRoles[userSelect.value]);
+    }
+
+    async function resetDemoState() {
+      if (!window.confirm('Restore seeded cases and interactions, clear pending write confirmations, and clear the audit history?')) return;
+      try {
+        await api('/api/v1/reset', { method: 'POST' });
+        window.location.reload();
+      } catch (error) {
+        window.alert(error.message);
+      }
     }
 
     async function searchCustomers() {
@@ -665,6 +684,8 @@
       .catch(() => { healthBadge.textContent = 'Local runtime unavailable'; });
 
     userSelect.addEventListener('change', searchCustomers);
+    userSelect.addEventListener('change', updateResetButton);
+    resetButton.addEventListener('click', resetDemoState);
     document.querySelector('#search-button').addEventListener('click', searchCustomers);
     searchInput.addEventListener('keydown', event => { if (event.key === 'Enter') searchCustomers(); });
     document.querySelector('#ask-assistant').addEventListener('click', askAssistant);

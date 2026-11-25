@@ -1,6 +1,6 @@
 # RELASI AI — Development Plan
 
-> **Status:** Proposed roadmap. The primary showcase profile is mock-only and requires no database, Docker, network access, credentials, or external systems. Dates and effort estimates are intentionally omitted until team capacity is known.
+> **Status:** Active roadmap; M0–M6 have implementation slices, and M7 is in progress. The primary showcase profile is mock-only and requires no database, Docker, network access, credentials, or external systems. Dates and effort estimates are intentionally omitted until team capacity is known.
 > **Inputs:** [REQUIREMENT.md](REQUIREMENT.md) and [arc42.md](arc42.md).
 
 ## 1. Delivery Goal
@@ -140,7 +140,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Implemented slice:** `RELASI_CRM_ADAPTER` selects the Dynamics-style or Salesforce-style in-memory adapter profile; both expose the same provider-neutral contract and deterministic fixtures. The health endpoint and UI identify the selected profile. Assistant traces now identify the local CRM profile and include explicit skipped stages for unused tools plus a final-response event; assistant-prepared case proposals include the adapter and confirmation outcome stages. Trace details contain only request metadata and authorized customer identifiers, not contact or account secrets.
 
-### M7 — Showcase polish and release readiness
+### M7 — Showcase polish and release readiness — started
 
 **Work:**
 
@@ -151,6 +151,8 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 - Review performance, accessibility, masking, and error behavior for the local showcase.
 
 **Demo/exit:** A fresh supported machine can launch the whole app without Docker, a database, network access, credentials, or separately running services. All six scenarios are repeatable from seeded data.
+
+**Implemented slice:** `./run.sh` now reports missing or unsupported JDK versions with an actionable message; invalid port configuration is reported clearly, and an occupied port suggests changing `RELASI_PORT`. Supervisors and administrators can reset mutable in-memory cases, interactions, pending confirmations, and audit history to seeded state from the UI. README documentation now lists demo identities/scopes, adapter and port configuration, sample prompts, expected outcomes, and common startup/access troubleshooting. Automated tests, fresh-checkout scenario verification, accessibility review, and performance review remain pending.
 
 ### Optional M8 — Sales and campaign features
 

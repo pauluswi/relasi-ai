@@ -25,7 +25,7 @@ All banking records and payment information are synthetic. The project does not 
 
 ## Quick start
 
-Requirements: a JDK 25 installation. No Maven, Node.js, database, Docker, credentials, or network connection is needed for this starter shell.
+Requirements: JDK 25 (both `java` and `javac`). No Maven, Node.js, database, Docker, credentials, or network connection is needed.
 
 ```sh
 ./run.sh
@@ -37,7 +37,7 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080). The server binds to loopbac
 RELASI_PORT=8090 ./run.sh
 ```
 
-Select the CRM adapter profile with `RELASI_CRM_ADAPTER` (`DYNAMICS` by default, or `SALESFORCE`). Both profiles use the same deterministic fixture set and preserve the same canonical CRM contract and demo outcomes.
+Select the CRM adapter profile with `RELASI_CRM_ADAPTER` (`DYNAMICS` by default, or `SALESFORCE`). Both profiles use the same deterministic fixture set and preserve the same canonical CRM contract and demo outcomes. `RELASI_PORT` defaults to `8080`.
 
 The script compiles the Java sources with the JDK, bundles local resources, and starts the application. Press `Ctrl+C` to stop it. Build output is temporary and ignored by Git.
 
@@ -66,6 +66,32 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `POST /api/v1/tools/{toolName}` | Invokes a discovered tool using form fields defined by its schema. Write tools return a preview and actor-bound confirmation token; submit only that token to confirm. |
 
 Write endpoints accept `application/x-www-form-urlencoded` fields. The assistant also prepares a case preview when asked with an imperative such as “Create a high-priority complaint case for this customer.” No case is created until the user confirms that exact preview. The demo identity selector is a local development convenience, not production authentication. Customer data is synthetic, deterministic, and held in memory; customer profile changes are not implemented.
+
+### Demo identities
+
+| Identity | Role | Customer scope |
+|---|---|---|
+| `service-officer` | Customer service officer | CUST-1001, CUST-1002 |
+| `relationship-manager` | Relationship manager | CUST-1003, CUST-1004 |
+| `supervisor` | CRM supervisor | All four demo customers; can reset demo data |
+| `administrator` | CRM administrator | All four demo customers; can reset demo data |
+
+The **Reset demo data** action is available to supervisors and administrators. It restores seeded cases and interactions, clears pending write confirmations, resets the audit history, then records the reset action. Data also resets when the process restarts.
+
+### Example prompts and expected behavior
+
+- With Alya selected, ask “Summarize this customer's relationship with the bank.” The assistant returns an in-scope Customer 360 summary.
+- Ask “A transfer of IDR 2,500,000 failed yesterday.” The assistant classifies the complaint and extracts details; it does not verify or execute a payment.
+- Ask “What is the procedure for handling a BI-FAST transfer complaint?” The assistant retrieves local synthetic guidance and displays its sources.
+- With a customer selected, ask “Create a high-priority complaint case for this customer.” Review the preview and confirm it to create a case.
+- Ask a procedure question unrelated to the bundled corpus. The assistant should abstain when no source meets the retrieval threshold.
+
+### Troubleshooting
+
+- **JDK version message:** Install JDK 25 and put its `bin` directory first on `PATH`; verify `java -version` and `javac -version` both report 25.
+- **Port is already in use:** Set another local port, for example `RELASI_PORT=8090 ./run.sh`.
+- **Invalid CRM profile:** Use `RELASI_CRM_ADAPTER=DYNAMICS` or `RELASI_CRM_ADAPTER=SALESFORCE`.
+- **No customer data appears:** Choose a seeded demo identity. The relationship manager only sees CUST-1003 and CUST-1004; the service officer sees CUST-1001 and CUST-1002.
 
 ## Intended mock-mode behavior
 

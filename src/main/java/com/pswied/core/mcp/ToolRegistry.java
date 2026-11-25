@@ -44,6 +44,10 @@ public final class ToolRegistry {
         return tools.values().stream().map(tool -> tool.definition().asJsonValue()).toList();
     }
 
+    public void clearPendingConfirmations() {
+        pendingActions.clear();
+    }
+
     public InvocationResult invoke(ToolUser user, String toolName, Map<String, String> submittedArguments) {
         Instant now = Instant.now();
         pendingActions.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));

@@ -688,8 +688,20 @@
       if (!data.campaigns.length) campaignContainer.append(makeText('p', 'No campaigns target this identity’s customer scope.', 'muted'));
       for (const campaign of data.campaigns) {
         const card = makeText('article', '', 'detail-card');
-        card.append(makeText('strong', campaign.name), makeText('p', `${campaign.type.replaceAll('_', ' ')} · ${campaign.invited} enrolled · ${campaign.responses} responses · ${campaign.engagementRate}% engagement`, 'muted'));
-        if (canWrite) {
+        const title = makeText('div', '', 'panel-heading');
+        title.append(makeText('strong', campaign.name), makeText('span', campaign.status, 'badge'));
+        card.append(title, makeText('p', `${campaign.type.replaceAll('_', ' ')} · ${campaign.invited} enrolled · ${campaign.responses} responses · ${campaign.engagementRate}% engagement`, 'muted'));
+        const campaignTransitions = { DRAFT: ['ACTIVE'], ACTIVE: ['PAUSED', 'COMPLETED'], PAUSED: ['ACTIVE', 'COMPLETED'], COMPLETED: [] }[campaign.status] || [];
+        if (canWrite && campaignTransitions.length) {
+          const statusForm = document.createElement('form'); statusForm.className = 'form-actions';
+          const statusSelect = document.createElement('select'); statusSelect.name = 'status'; statusSelect.setAttribute('aria-label', `New status for ${campaign.name}`);
+          for (const value of campaignTransitions) statusSelect.append(option(value, value));
+          const statusButton = makeText('button', 'Update status'); statusButton.type = 'submit';
+          statusForm.append(statusSelect, statusButton);
+          statusForm.addEventListener('submit', event => updateCampaignStatus(event, campaign.id, statusSelect.value));
+          card.append(statusForm);
+        }
+        if (canWrite && campaign.status === 'ACTIVE') {
           const enrollmentForm = document.createElement('form'); enrollmentForm.className = 'form-actions';
           const customerSelect = document.createElement('select'); customerSelect.name = 'customerId'; customerSelect.setAttribute('aria-label', `Customer to enroll in ${campaign.name}`);
           const eligible = campaign.availableCustomerIds.map(id => customers.find(customer => customer.id === id)).filter(Boolean);
@@ -697,14 +709,21 @@
           const enrollButton = makeText('button', 'Enroll customer'); enrollButton.type = 'submit'; enrollButton.disabled = !eligible.length;
           enrollmentForm.append(customerSelect, enrollButton);
           enrollmentForm.addEventListener('submit', event => enrollCampaignCustomer(event, campaign.id));
-          card.append(enrollmentForm);
+          if (eligible.length) card.append(enrollmentForm);
+          else card.append(makeText('p', 'All eligible customers in your scope are enrolled.', 'muted'));
+        } else if (campaign.status === 'DRAFT') {
+          card.append(makeText('p', 'Activate this campaign before enrolling customers.', 'muted'));
+        } else if (campaign.status === 'PAUSED') {
+          card.append(makeText('p', 'Enrollment is paused. Existing responses can still be updated.', 'muted'));
+        } else if (campaign.status === 'COMPLETED') {
+          card.append(makeText('p', 'This campaign is complete and no longer accepts changes.', 'muted'));
         }
         for (const enrollment of campaign.enrollments) {
           const participant = makeText('div', '', 'dashboard-row');
           const participantCopy = document.createElement('div');
           participantCopy.append(makeText('strong', enrollment.customerName), makeText('small', enrollment.response ? `${enrollment.response.status.replaceAll('_', ' ')} · ${enrollment.response.summary}` : 'Enrolled · no response recorded'));
           participant.append(participantCopy);
-          if (canWrite) {
+          if (canWrite && ['ACTIVE', 'PAUSED'].includes(campaign.status)) {
             const responseForm = document.createElement('form'); responseForm.className = 'form-actions';
             const summary = document.createElement('input'); summary.name = 'summary'; summary.required = true; summary.maxLength = 500;
             summary.placeholder = 'Response summary'; summary.setAttribute('aria-label', `Response summary for ${enrollment.customerName}`);
@@ -809,6 +828,24 @@
           method: 'POST', body: new URLSearchParams(new FormData(form))
         });
         document.querySelector('#sales-feedback').textContent = `${result.customerId} enrolled in ${campaignId}.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function updateCampaignStatus(event, campaignId, status) {
+      event.preventDefault();
+      const button = event.currentTarget.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        await api(`/api/v1/sales/campaigns/${encodeURIComponent(campaignId)}/status`, {
+          method: 'POST', body: new URLSearchParams({ status })
+        });
+        document.querySelector('#sales-feedback').textContent = `${campaignId} moved to ${status.toLowerCase()}.`;
         await loadSalesWorkspace();
         await loadAdministration();
       } catch (error) {

@@ -525,7 +525,11 @@ public final class RelasiAiApplication {
             if (form == null) return;
             String customerId = form.getOrDefault("customerId", "").strip();
             try {
-                if ("enrollments".equals(segments[1])) {
+                if ("status".equals(segments[1])) {
+                    var campaign = SALES.updateCampaignStatus(user.id(), campaignId, form.get("status"), user.customerScope());
+                    send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                            "id", campaign.id(), "status", campaign.status())));
+                } else if ("enrollments".equals(segments[1])) {
                     SALES.enroll(user.id(), campaignId, customerId, user.customerScope());
                     send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
                             "campaignId", campaignId, "customerId", customerId, "status", "ENROLLED")));
@@ -553,7 +557,7 @@ public final class RelasiAiApplication {
                 var campaign = SALES.createCampaign(user.id(), form.get("name"), form.get("type"), audience, user.customerScope());
                 send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
                         "id", campaign.id(), "name", campaign.name(), "type", campaign.type(),
-                        "eligible", campaign.audienceSize())));
+                        "eligible", campaign.audienceSize(), "status", campaign.status())));
             } catch (IllegalArgumentException exception) {
                 badRequest(exchange, exception.getMessage());
             }

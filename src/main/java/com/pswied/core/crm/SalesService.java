@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public final class SalesService {
     private static final Set<String> STAGES = Set.of("DISCOVERY", "QUALIFICATION", "PROPOSAL", "CLOSED_WON", "CLOSED_LOST");
     private static final Set<String> CAMPAIGN_TYPES = Set.of("CUSTOMER_RETENTION", "DIGITAL_ENGAGEMENT", "PRODUCT_AWARENESS", "SERVICE_FOLLOW_UP");
+    private static final Set<String> CAMPAIGN_STATUSES = Set.of("DRAFT", "ACTIVE", "PAUSED", "COMPLETED");
     private final List<Opportunity> opportunities = new ArrayList<>();
     private final AtomicInteger nextNumber = new AtomicInteger(1005);
     private final List<Campaign> campaigns = new ArrayList<>();
@@ -34,9 +35,9 @@ public final class SalesService {
         nextNumber.set(1005);
         campaigns.clear();
         Set<String> allCustomers = Set.of("CUST-1001", "CUST-1002", "CUST-1003", "CUST-1004");
-        campaigns.add(new Campaign("CMP-1001", "Everyday banking check-in", "CUSTOMER_RETENTION", allCustomers,
+        campaigns.add(new Campaign("CMP-1001", "Everyday banking check-in", "CUSTOMER_RETENTION", "ACTIVE", allCustomers,
                 new HashSet<>(Set.of("CUST-1001", "CUST-1003"))));
-        campaigns.add(new Campaign("CMP-1002", "Digital banking adoption", "DIGITAL_ENGAGEMENT", allCustomers,
+        campaigns.add(new Campaign("CMP-1002", "Digital banking adoption", "DIGITAL_ENGAGEMENT", "ACTIVE", allCustomers,
                 new HashSet<>(Set.of("CUST-1002", "CUST-1004"))));
         nextCampaignNumber.set(1003);
         responses.clear();
@@ -72,7 +73,7 @@ public final class SalesService {
                                 "id", response.id(), "summary", response.summary(), "channel", response.channel(), "status", response.status()));
                         return enrollment;
                     }).toList();
-            return Map.<String, Object>of("id", campaign.id(), "name", campaign.name(), "type", campaign.type(),
+            return Map.<String, Object>of("id", campaign.id(), "name", campaign.name(), "type", campaign.type(), "status", campaign.status(),
                     "eligible", eligibleCustomerIds.size(), "invited", invitedCustomerIds.size(), "responses", responseCount,
                     "engagementRate", invitedCustomerIds.isEmpty() ? 0 : Math.round(responseCount * 100.0 / invitedCustomerIds.size()),
                     "availableCustomerIds", eligibleCustomerIds.stream().filter(id -> !invitedCustomerIds.contains(id)).sorted().toList(),
@@ -120,6 +121,7 @@ public final class SalesService {
                                     List<String> permittedCustomerIds) {
         if (!permittedCustomerIds.contains(customerId)) throw new CampaignNotFoundException();
         Campaign campaign = campaign(campaignId);
+        require("ACTIVE".equals(campaign.status()), "Campaign must be active before enrolling customers.");
         if (!campaign.eligibleCustomerIds().contains(customerId)) throw new CampaignNotFoundException();
         require(campaign.customerIds().add(customerId), "Customer is already enrolled in this campaign.");
         audit.record(actorId, "CAMPAIGN_CUSTOMER_ENROLLED", campaignId + "/" + customerId, "SUCCESS");
@@ -136,10 +138,31 @@ public final class SalesService {
         require(!audience.isEmpty(), "Select at least one in-scope customer for the campaign audience.");
         require(permittedCustomerIds.containsAll(audience), "Campaign audience must stay within your customer scope.");
         String id = "CMP-%04d".formatted(nextCampaignNumber.getAndIncrement());
-        Campaign campaign = new Campaign(id, normalizedName, normalizedType, audience, new HashSet<>());
+        Campaign campaign = new Campaign(id, normalizedName, normalizedType, "DRAFT", audience, new HashSet<>());
         campaigns.add(campaign);
         audit.record(actorId, "CAMPAIGN_CREATED", id + "/audience=" + audience.size(), "SUCCESS");
-        return new CampaignCreated(campaign.id(), campaign.name(), campaign.type(), campaign.eligibleCustomerIds().size());
+        return new CampaignCreated(campaign.id(), campaign.name(), campaign.type(), campaign.eligibleCustomerIds().size(), campaign.status());
+    }
+
+    public synchronized CampaignCreated updateCampaignStatus(String actorId, String campaignId, String status,
+                                                              List<String> permittedCustomerIds) {
+        Campaign current = campaign(campaignId);
+        if (current.eligibleCustomerIds().stream().noneMatch(permittedCustomerIds::contains)) throw new CampaignNotFoundException();
+        String nextStatus = status == null ? "" : status.strip().toUpperCase();
+        require(CAMPAIGN_STATUSES.contains(nextStatus), "Choose a supported campaign status.");
+        require(!current.status().equals(nextStatus), "Campaign already has that status.");
+        boolean allowed = switch (current.status()) {
+            case "DRAFT" -> "ACTIVE".equals(nextStatus);
+            case "ACTIVE" -> Set.of("PAUSED", "COMPLETED").contains(nextStatus);
+            case "PAUSED" -> Set.of("ACTIVE", "COMPLETED").contains(nextStatus);
+            default -> false;
+        };
+        require(allowed, "Campaign status transition is not allowed.");
+        Campaign updated = new Campaign(current.id(), current.name(), current.type(), nextStatus,
+                current.eligibleCustomerIds(), current.customerIds());
+        campaigns.set(campaigns.indexOf(current), updated);
+        audit.record(actorId, "CAMPAIGN_STATUS_CHANGED", campaignId, "SUCCESS:" + nextStatus);
+        return new CampaignCreated(updated.id(), updated.name(), updated.type(), updated.eligibleCustomerIds().size(), updated.status());
     }
 
     public synchronized CampaignResponse recordResponse(String actorId, String campaignId, String customerId,
@@ -147,6 +170,7 @@ public final class SalesService {
                                                         List<String> permittedCustomerIds) {
         if (!permittedCustomerIds.contains(customerId)) throw new CampaignNotFoundException();
         Campaign campaign = campaign(campaignId);
+        require(Set.of("ACTIVE", "PAUSED").contains(campaign.status()), "Responses can only be recorded for active or paused campaigns.");
         require(campaign.customerIds().contains(customerId), "Enroll the customer in this campaign before recording a response.");
         String normalizedSummary = summary == null ? "" : summary.strip();
         String normalizedChannel = channel == null ? "" : channel.strip().toUpperCase();
@@ -191,13 +215,13 @@ public final class SalesService {
                                    String channel, String status) {
     }
 
-    public record CampaignCreated(String id, String name, String type, int audienceSize) {
+    public record CampaignCreated(String id, String name, String type, int audienceSize, String status) {
     }
 
     public static final class CampaignNotFoundException extends RuntimeException {
     }
 
-    private record Campaign(String id, String name, String type, Set<String> eligibleCustomerIds,
+    private record Campaign(String id, String name, String type, String status, Set<String> eligibleCustomerIds,
                             Set<String> customerIds) {
     }
 }

@@ -705,6 +705,25 @@
         const title = makeText('div', '', 'panel-heading');
         title.append(makeText('strong', campaign.name), makeText('span', campaign.status, 'badge'));
         card.append(title, makeText('p', `${campaign.type.replaceAll('_', ' ')} · ${campaign.invited} enrolled · ${campaign.responses} responses · ${campaign.engagementRate}% engagement`, 'muted'));
+        if (canWrite && campaign.status === 'DRAFT' && campaign.invited === 0) {
+          const audienceForm = document.createElement('form'); audienceForm.className = 'form-grid';
+          const field = document.createElement('div'); field.className = 'wide';
+          const audienceLabel = makeText('label', 'Edit draft audience');
+          const audienceSelect = document.createElement('select'); audienceSelect.multiple = true; audienceSelect.size = 4; audienceSelect.required = true;
+          audienceSelect.setAttribute('aria-label', `Draft audience for ${campaign.name}`);
+          connectLabel(audienceLabel, audienceSelect);
+          const currentAudience = new Set(campaign.audienceCustomerIds);
+          audienceSelect.append(...customers.map(customer => {
+            const customerOption = option(customer.id, `${customer.fullName} · ${customer.id}`);
+            customerOption.selected = currentAudience.has(customer.id);
+            return customerOption;
+          }));
+          field.append(audienceLabel, audienceSelect);
+          const updateAudience = makeText('button', 'Save audience'); updateAudience.type = 'submit'; updateAudience.style.width = 'auto';
+          audienceForm.append(field, updateAudience);
+          audienceForm.addEventListener('submit', event => updateCampaignAudience(event, campaign.id, audienceSelect));
+          card.append(audienceForm);
+        }
         const campaignTransitions = { DRAFT: ['ACTIVE'], ACTIVE: ['PAUSED', 'COMPLETED'], PAUSED: ['ACTIVE', 'COMPLETED'], COMPLETED: [] }[campaign.status] || [];
         if (canWrite && campaignTransitions.length) {
           const statusForm = document.createElement('form'); statusForm.className = 'form-actions';
@@ -945,6 +964,25 @@
           method: 'POST', body: new URLSearchParams({ status })
         });
         document.querySelector('#sales-feedback').textContent = `${campaignId} moved to ${status.toLowerCase()}.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function updateCampaignAudience(event, campaignId, audienceSelect) {
+      event.preventDefault();
+      const button = event.currentTarget.querySelector('button[type="submit"]');
+      const customerIds = [...audienceSelect.selectedOptions].map(item => item.value);
+      button.disabled = true;
+      try {
+        await api(`/api/v1/sales/campaigns/${encodeURIComponent(campaignId)}/audience`, {
+          method: 'POST', body: new URLSearchParams({ customerIds: customerIds.join(',') })
+        });
+        document.querySelector('#sales-feedback').textContent = `${campaignId} audience updated.`;
         await loadSalesWorkspace();
         await loadAdministration();
       } catch (error) {

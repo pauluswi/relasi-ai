@@ -579,6 +579,11 @@ public final class RelasiAiApplication {
                     var campaign = SALES.updateCampaignStatus(user.id(), campaignId, form.get("status"), user.customerScope());
                     send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
                             "id", campaign.id(), "status", campaign.status())));
+                } else if ("audience".equals(segments[1])) {
+                    List<String> audience = List.of(form.getOrDefault("customerIds", "").split(","));
+                    var campaign = SALES.updateCampaignAudience(user.id(), campaignId, audience, user.customerScope());
+                    send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                            "id", campaign.id(), "eligible", campaign.audienceSize())));
                 } else if ("enrollments".equals(segments[1])) {
                     SALES.enroll(user.id(), campaignId, customerId, user.customerScope());
                     send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(

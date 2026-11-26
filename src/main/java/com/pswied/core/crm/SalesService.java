@@ -85,11 +85,19 @@ public final class SalesService {
                                 "id", response.id(), "summary", response.summary(), "channel", response.channel(), "status", response.status()));
                         return enrollment;
                     }).toList();
-            return Map.<String, Object>of("id", campaign.id(), "name", campaign.name(), "type", campaign.type(), "status", campaign.status(),
-                    "eligible", eligibleCustomerIds.size(), "invited", invitedCustomerIds.size(), "responses", responseCount,
-                    "engagementRate", invitedCustomerIds.isEmpty() ? 0 : Math.round(responseCount * 100.0 / invitedCustomerIds.size()),
-                    "availableCustomerIds", eligibleCustomerIds.stream().filter(id -> !invitedCustomerIds.contains(id)).sorted().toList(),
-                    "enrollments", enrollments);
+            Map<String, Object> campaignSummary = new java.util.LinkedHashMap<>();
+            campaignSummary.put("id", campaign.id());
+            campaignSummary.put("name", campaign.name());
+            campaignSummary.put("type", campaign.type());
+            campaignSummary.put("status", campaign.status());
+            campaignSummary.put("eligible", eligibleCustomerIds.size());
+            campaignSummary.put("invited", invitedCustomerIds.size());
+            campaignSummary.put("responses", responseCount);
+            campaignSummary.put("engagementRate", invitedCustomerIds.isEmpty() ? 0 : Math.round(responseCount * 100.0 / invitedCustomerIds.size()));
+            campaignSummary.put("audienceCustomerIds", eligibleCustomerIds.stream().sorted().toList());
+            campaignSummary.put("availableCustomerIds", eligibleCustomerIds.stream().filter(id -> !invitedCustomerIds.contains(id)).sorted().toList());
+            campaignSummary.put("enrollments", enrollments);
+            return campaignSummary;
         }).filter(campaign -> (int) campaign.get("eligible") > 0).toList();
         List<Map<String, Object>> scopedResponses = responses.stream()
                 .filter(item -> permittedCustomerIds.contains(item.customerId()))
@@ -220,6 +228,22 @@ public final class SalesService {
                 current.eligibleCustomerIds(), current.customerIds());
         campaigns.set(campaigns.indexOf(current), updated);
         audit.record(actorId, "CAMPAIGN_STATUS_CHANGED", campaignId, "SUCCESS:" + nextStatus);
+        return new CampaignCreated(updated.id(), updated.name(), updated.type(), updated.eligibleCustomerIds().size(), updated.status());
+    }
+
+    public synchronized CampaignCreated updateCampaignAudience(String actorId, String campaignId,
+                                                                List<String> audienceCustomerIds,
+                                                                List<String> permittedCustomerIds) {
+        Campaign current = campaign(campaignId);
+        if (current.eligibleCustomerIds().stream().noneMatch(permittedCustomerIds::contains)) throw new CampaignNotFoundException();
+        require("DRAFT".equals(current.status()), "Only draft campaigns can have their audience changed.");
+        require(current.customerIds().isEmpty(), "Campaign audience cannot change after enrollment.");
+        Set<String> audience = audienceCustomerIds.stream().map(String::strip).filter(value -> !value.isEmpty()).collect(Collectors.toUnmodifiableSet());
+        require(!audience.isEmpty(), "Select at least one in-scope customer for the campaign audience.");
+        require(permittedCustomerIds.containsAll(audience), "Campaign audience must stay within your customer scope.");
+        Campaign updated = new Campaign(current.id(), current.name(), current.type(), current.status(), audience, current.customerIds());
+        campaigns.set(campaigns.indexOf(current), updated);
+        audit.record(actorId, "CAMPAIGN_AUDIENCE_UPDATED", campaignId + "/audience=" + audience.size(), "SUCCESS");
         return new CampaignCreated(updated.id(), updated.name(), updated.type(), updated.eligibleCustomerIds().size(), updated.status());
     }
 

@@ -115,6 +115,7 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `POST /api/v1/sales/leads/{id}/convert` | Converts a qualified in-scope lead into a synthetic opportunity. |
 | `POST /api/v1/sales/campaigns` | Creates a synthetic campaign targeting selected customers within the user's scope. |
 | `POST /api/v1/sales/campaigns/{id}/status` | Moves a campaign through its allowed lifecycle statuses. |
+| `POST /api/v1/sales/campaigns/{id}/audience` | Revises an in-scope audience before a draft campaign is activated or enrolled. |
 | `POST /api/v1/sales/campaigns/{id}/enrollments` | Enrolls an in-scope customer into an active campaign. |
 | `POST /api/v1/sales/campaigns/{id}/responses` | Records or updates an enrolled customer's campaign response. |
 | `POST /api/v1/interactions` | Records an interaction for an in-scope customer, optionally linked to that customer's case. |

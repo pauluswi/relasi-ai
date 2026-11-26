@@ -111,6 +111,7 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `POST /api/v1/sales/opportunities` | Creates an in-scope synthetic opportunity (relationship manager, supervisor, or administrator). |
 | `POST /api/v1/sales/opportunities/{id}` | Moves an in-scope opportunity to a supported pipeline stage (relationship manager, supervisor, or administrator). |
 | `POST /api/v1/sales/leads` | Creates an in-scope relationship lead (relationship manager, supervisor, or administrator). |
+| `POST /api/v1/sales/leads/{id}/details` | Edits a new lead's title and product interest within the user's scope. |
 | `POST /api/v1/sales/leads/{id}/status` | Qualifies or disqualifies a new in-scope lead. |
 | `POST /api/v1/sales/leads/{id}/convert` | Converts a qualified in-scope lead into a synthetic opportunity. |
 | `POST /api/v1/sales/campaigns` | Creates a synthetic campaign targeting selected customers within the user's scope. |

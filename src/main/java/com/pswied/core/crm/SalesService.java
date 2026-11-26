@@ -136,6 +136,22 @@ public final class SalesService {
         return updated;
     }
 
+    public synchronized Lead updateLeadDetails(String actorId, String id, String name, String productInterest,
+                                               List<String> permittedCustomerIds) {
+        Lead current = lead(id, permittedCustomerIds);
+        require("NEW".equals(current.status()), "Only new leads can be edited.");
+        String normalizedName = name == null ? "" : name.strip();
+        String normalizedInterest = productInterest == null ? "" : productInterest.strip();
+        require(!normalizedName.isEmpty() && normalizedName.length() <= 120,
+                "Lead name is required and must be 120 characters or fewer.");
+        require(!normalizedInterest.isEmpty() && normalizedInterest.length() <= 100,
+                "Product interest is required and must be 100 characters or fewer.");
+        Lead updated = new Lead(current.id(), current.customerId(), normalizedName, normalizedInterest, current.status(), current.owner());
+        leads.set(leads.indexOf(current), updated);
+        audit.record(actorId, "LEAD_DETAILS_UPDATED", id, "SUCCESS");
+        return updated;
+    }
+
     public synchronized LeadConversion convertLead(String actorId, String id, long amount,
                                                    List<String> permittedCustomerIds) {
         Lead current = lead(id, permittedCustomerIds);

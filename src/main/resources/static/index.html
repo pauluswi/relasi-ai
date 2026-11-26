@@ -796,6 +796,19 @@
         card.append(makeText('strong', lead.name), makeText('p', `${lead.customerName} · ${lead.productInterest}`, 'muted'));
         card.append(makeText('span', lead.status.replaceAll('_', ' '), 'queue-badge'));
         if (canWrite && lead.status === 'NEW') {
+          const editForm = document.createElement('form'); editForm.className = 'form-grid';
+          const titleField = document.createElement('div');
+          const titleLabel = makeText('label', 'Lead title');
+          const titleInput = document.createElement('input'); titleInput.name = 'name'; titleInput.value = lead.name; titleInput.maxLength = 120; titleInput.required = true;
+          connectLabel(titleLabel, titleInput); titleField.append(titleLabel, titleInput);
+          const interestField = document.createElement('div');
+          const interestLabel = makeText('label', 'Product interest');
+          const interestInput = document.createElement('input'); interestInput.name = 'productInterest'; interestInput.value = lead.productInterest; interestInput.maxLength = 100; interestInput.required = true;
+          connectLabel(interestLabel, interestInput); interestField.append(interestLabel, interestInput);
+          const saveEdit = makeText('button', 'Save lead details'); saveEdit.type = 'submit'; saveEdit.style.width = 'auto';
+          editForm.append(titleField, interestField, saveEdit);
+          editForm.addEventListener('submit', event => editLead(event, lead.id));
+          card.append(editForm);
           const actions = makeText('div', '', 'form-actions');
           for (const status of ['QUALIFIED', 'DISQUALIFIED']) {
             const button = makeText('button', status === 'QUALIFIED' ? 'Qualify' : 'Disqualify');
@@ -871,6 +884,25 @@
         await loadAdministration();
       } catch (error) {
         document.querySelector('#sales-feedback').textContent = error.message;
+      }
+    }
+
+    async function editLead(event, id) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        await api(`/api/v1/sales/leads/${encodeURIComponent(id)}/details`, {
+          method: 'POST', body: new URLSearchParams(new FormData(form))
+        });
+        document.querySelector('#sales-feedback').textContent = `${id} updated.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
+      } finally {
+        button.disabled = false;
       }
     }
 

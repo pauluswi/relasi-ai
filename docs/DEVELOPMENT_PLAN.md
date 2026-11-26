@@ -170,7 +170,7 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 ### M8 — Sales and campaign features — in progress
 
-The M7 UI now supports relationship lead creation, qualification/disqualification, conversion into opportunities, opportunity stage changes, campaign creation, draft audience editing, lifecycle management, enrollment, and response tracking against scoped local fixtures. Remaining work includes lead editing and product recommendations. Keep recommendations advisory and fixture-backed.
+The M7 UI now supports relationship lead creation/editing, qualification/disqualification, conversion into opportunities, opportunity stage changes, campaign creation, draft audience editing, lifecycle management, enrollment, and response tracking against scoped local fixtures. Remaining work includes product recommendations and richer sales analytics. Keep recommendations advisory and fixture-backed.
 
 ## 5. Demonstration Scenario Mapping
 

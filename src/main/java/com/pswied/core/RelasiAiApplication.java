@@ -528,7 +528,11 @@ public final class RelasiAiApplication {
             Map<String, String> form = readForm(exchange);
             if (form == null) return;
             try {
-                if ("status".equals(segments[1])) {
+                if ("details".equals(segments[1])) {
+                    var lead = SALES.updateLeadDetails(user.id(), id, form.get("name"), form.get("productInterest"), user.customerScope());
+                    send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                            "id", lead.id(), "name", lead.name(), "productInterest", lead.productInterest())));
+                } else if ("status".equals(segments[1])) {
                     var lead = SALES.updateLeadStatus(user.id(), id, form.get("status"), user.customerScope());
                     send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of("id", lead.id(), "status", lead.status())));
                 } else if ("convert".equals(segments[1])) {

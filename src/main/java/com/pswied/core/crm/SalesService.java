@@ -11,11 +11,13 @@ import java.util.stream.Collectors;
 /** Deterministic, in-memory sales and campaign fixtures for the optional showcase slice. */
 public final class SalesService {
     private static final Set<String> STAGES = Set.of("DISCOVERY", "QUALIFICATION", "PROPOSAL", "CLOSED_WON", "CLOSED_LOST");
+    private static final Set<String> CAMPAIGN_TYPES = Set.of("CUSTOMER_RETENTION", "DIGITAL_ENGAGEMENT", "PRODUCT_AWARENESS", "SERVICE_FOLLOW_UP");
     private final List<Opportunity> opportunities = new ArrayList<>();
     private final AtomicInteger nextNumber = new AtomicInteger(1005);
     private final List<Campaign> campaigns = new ArrayList<>();
     private final List<CampaignResponse> responses = new ArrayList<>();
     private final AtomicInteger nextResponseNumber = new AtomicInteger(1004);
+    private final AtomicInteger nextCampaignNumber = new AtomicInteger(1003);
     private final AuditService audit;
 
     public SalesService(AuditService audit) {
@@ -36,6 +38,7 @@ public final class SalesService {
                 new HashSet<>(Set.of("CUST-1001", "CUST-1003"))));
         campaigns.add(new Campaign("CMP-1002", "Digital banking adoption", "DIGITAL_ENGAGEMENT", allCustomers,
                 new HashSet<>(Set.of("CUST-1002", "CUST-1004"))));
+        nextCampaignNumber.set(1003);
         responses.clear();
         responses.add(new CampaignResponse("RSP-1001", "CMP-1001", "CUST-1001", "Requested a relationship review", "EMAIL", "RESPONDED"));
         responses.add(new CampaignResponse("RSP-1002", "CMP-1002", "CUST-1004", "Opened the digital banking guide", "MOBILE_BANKING", "ENGAGED"));
@@ -122,6 +125,23 @@ public final class SalesService {
         audit.record(actorId, "CAMPAIGN_CUSTOMER_ENROLLED", campaignId + "/" + customerId, "SUCCESS");
     }
 
+    public synchronized CampaignCreated createCampaign(String actorId, String name, String type, List<String> audienceCustomerIds,
+                                                        List<String> permittedCustomerIds) {
+        String normalizedName = name == null ? "" : name.strip();
+        String normalizedType = type == null ? "" : type.strip().toUpperCase();
+        require(!normalizedName.isEmpty() && normalizedName.length() <= 100,
+                "Campaign name is required and must be 100 characters or fewer.");
+        require(CAMPAIGN_TYPES.contains(normalizedType), "Choose a supported campaign type.");
+        Set<String> audience = audienceCustomerIds.stream().map(String::strip).filter(value -> !value.isEmpty()).collect(Collectors.toUnmodifiableSet());
+        require(!audience.isEmpty(), "Select at least one in-scope customer for the campaign audience.");
+        require(permittedCustomerIds.containsAll(audience), "Campaign audience must stay within your customer scope.");
+        String id = "CMP-%04d".formatted(nextCampaignNumber.getAndIncrement());
+        Campaign campaign = new Campaign(id, normalizedName, normalizedType, audience, new HashSet<>());
+        campaigns.add(campaign);
+        audit.record(actorId, "CAMPAIGN_CREATED", id + "/audience=" + audience.size(), "SUCCESS");
+        return new CampaignCreated(campaign.id(), campaign.name(), campaign.type(), campaign.eligibleCustomerIds().size());
+    }
+
     public synchronized CampaignResponse recordResponse(String actorId, String campaignId, String customerId,
                                                         String summary, String channel, String status,
                                                         List<String> permittedCustomerIds) {
@@ -169,6 +189,9 @@ public final class SalesService {
 
     public record CampaignResponse(String id, String campaignId, String customerId, String summary,
                                    String channel, String status) {
+    }
+
+    public record CampaignCreated(String id, String name, String type, int audienceSize) {
     }
 
     public static final class CampaignNotFoundException extends RuntimeException {

@@ -143,7 +143,8 @@ public final class RelasiAiApplication {
             return;
         }
         if (path.equals(API_PREFIX + "/sales") || path.equals(API_PREFIX + "/sales/opportunities")
-                || path.startsWith(API_PREFIX + "/sales/opportunities/") || path.startsWith(API_PREFIX + "/sales/campaigns/")) {
+                || path.startsWith(API_PREFIX + "/sales/opportunities/") || path.equals(API_PREFIX + "/sales/campaigns")
+                || path.startsWith(API_PREFIX + "/sales/campaigns/")) {
             handleSalesRequest(exchange, path);
             return;
         }
@@ -531,7 +532,7 @@ public final class RelasiAiApplication {
                 } else if ("responses".equals(segments[1])) {
                     var response = SALES.recordResponse(user.id(), campaignId, customerId, form.get("summary"),
                             form.get("channel"), form.get("status"), user.customerScope());
-                    send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                    send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
                             "id", response.id(), "campaignId", response.campaignId(), "customerId", response.customerId(),
                             "summary", response.summary(), "channel", response.channel(), "status", response.status())));
                 } else {
@@ -539,6 +540,20 @@ public final class RelasiAiApplication {
                 }
             } catch (SalesService.CampaignNotFoundException exception) {
                 send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"campaign_or_customer_not_found\"}");
+            } catch (IllegalArgumentException exception) {
+                badRequest(exchange, exception.getMessage());
+            }
+            return;
+        }
+        if (path.equals(API_PREFIX + "/sales/campaigns") && "POST".equals(method)) {
+            Map<String, String> form = readForm(exchange);
+            if (form == null) return;
+            List<String> audience = List.of(form.getOrDefault("customerIds", "").split(","));
+            try {
+                var campaign = SALES.createCampaign(user.id(), form.get("name"), form.get("type"), audience, user.customerScope());
+                send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                        "id", campaign.id(), "name", campaign.name(), "type", campaign.type(),
+                        "eligible", campaign.audienceSize())));
             } catch (IllegalArgumentException exception) {
                 badRequest(exchange, exception.getMessage());
             }

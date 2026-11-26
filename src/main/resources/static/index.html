@@ -291,7 +291,7 @@
       <div id="case-queue-content" aria-live="polite"><p class="muted">Loading scoped case records…</p></div>
     </section>
     <section id="sales" class="card" aria-labelledby="sales-title">
-      <div class="section-hero"><div><h2 id="sales-title">Sales &amp; campaigns</h2><p>Relationship opportunities and campaign activity</p></div><span class="badge">Illustrative mock workspace</span></div>
+      <div class="section-hero"><div><h2 id="sales-title">Sales &amp; campaigns</h2><p>Relationship opportunities and campaign activity</p></div><span class="badge">Synthetic local workspace</span></div>
       <p class="muted">Opportunity, campaign enrollment, and response changes use synthetic in-memory records and reset when demo data is restored or the app restarts.</p>
       <div class="dashboard-grid" id="sales-metrics"></div>
       <section class="admin-card" aria-labelledby="new-opportunity-title" style="margin-bottom:.9rem">
@@ -306,7 +306,15 @@
       </section>
       <div class="pipeline" id="sales-pipeline" aria-label="Illustrative opportunity pipeline"></div>
       <div class="dashboard-panels" style="margin-top: .9rem">
-        <section class="dashboard-panel" aria-labelledby="campaign-list-title"><div class="panel-heading"><div><h3 id="campaign-list-title">Campaigns</h3><p>Sample engagement programs</p></div></div><div id="campaign-list" class="dashboard-list"></div></section>
+        <section class="dashboard-panel" aria-labelledby="campaign-list-title"><div class="panel-heading"><div><h3 id="campaign-list-title">Campaigns</h3><p>Sample engagement programs</p></div></div>
+          <form id="campaign-form" class="form-grid" hidden>
+            <div class="wide"><label for="campaign-name">Campaign name</label><input id="campaign-name" name="name" type="text" maxlength="100" required></div>
+            <div><label for="campaign-type">Campaign type</label><select id="campaign-type" name="type"><option value="CUSTOMER_RETENTION">Customer retention</option><option value="DIGITAL_ENGAGEMENT">Digital engagement</option><option value="PRODUCT_AWARENESS">Product awareness</option><option value="SERVICE_FOLLOW_UP">Service follow-up</option></select></div>
+            <div class="wide"><label for="campaign-targets">Audience (customers in your scope)</label><select id="campaign-targets" multiple size="4" required aria-describedby="campaign-target-help"></select><small id="campaign-target-help" class="muted">Use Ctrl or Command to select multiple customers.</small></div>
+            <div class="form-actions wide"><button type="submit" style="width:auto">Create campaign</button></div>
+          </form>
+          <div id="campaign-list" class="dashboard-list"></div>
+        </section>
         <section class="dashboard-panel" aria-labelledby="campaign-response-title"><div class="panel-heading"><div><h3 id="campaign-response-title">Recent responses</h3><p>Synthetic engagement signals</p></div></div><div id="campaign-responses" class="dashboard-list"></div></section>
       </div>
     </section>
@@ -617,11 +625,19 @@
       const canWrite = ['RELATIONSHIP_MANAGER', 'CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(demoRoles[userSelect.value]);
       const opportunityForm = document.querySelector('#opportunity-form');
       opportunityForm.hidden = !canWrite;
+      document.querySelector('#campaign-form').hidden = !canWrite;
       document.querySelector('#sales-write-note').textContent = canWrite
         ? 'Create an opportunity for a customer in your scope. New opportunities start in Discovery.'
         : 'Opportunity creation and stage changes require relationship manager, supervisor, or administrator access.';
       const customerSelect = document.querySelector('#opportunity-customer');
       customerSelect.replaceChildren(...customers.map(customer => option(customer.id, `${customer.fullName} · ${customer.id}`)));
+      const campaignTargets = document.querySelector('#campaign-targets');
+      const selectedTargets = new Set([...campaignTargets.selectedOptions].map(item => item.value));
+      campaignTargets.replaceChildren(...customers.map(customer => {
+        const customerOption = option(customer.id, `${customer.fullName} · ${customer.id}`);
+        customerOption.selected = selectedTargets.has(customer.id);
+        return customerOption;
+      }));
       const columns = [
         ['DISCOVERY', 'Discovery'], ['QUALIFICATION', 'Qualification'], ['PROPOSAL', 'Proposal'], ['CLOSED_WON', 'Closed won'], ['CLOSED_LOST', 'Closed lost']
       ];
@@ -735,6 +751,31 @@
         await loadAdministration();
       } catch (error) {
         feedback.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function createCampaign(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button[type="submit"]');
+      const selectedIds = [...document.querySelector('#campaign-targets').selectedOptions].map(item => item.value);
+      button.disabled = true;
+      document.querySelector('#sales-feedback').textContent = 'Creating campaign…';
+      try {
+        const body = new URLSearchParams({
+          name: form.querySelector('[name="name"]').value,
+          type: form.querySelector('[name="type"]').value,
+          customerIds: selectedIds.join(',')
+        });
+        const result = await api('/api/v1/sales/campaigns', { method: 'POST', body });
+        form.reset();
+        document.querySelector('#sales-feedback').textContent = `${result.id} created for ${result.eligible} in-scope customers.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
       } finally {
         button.disabled = false;
       }
@@ -1610,6 +1651,7 @@
     document.querySelector('#admin-reset').addEventListener('click', resetDemoState);
     document.querySelector('#refresh-admin').addEventListener('click', loadAdministration);
     document.querySelector('#opportunity-form').addEventListener('submit', createOpportunity);
+    document.querySelector('#campaign-form').addEventListener('submit', createCampaign);
     document.querySelector('#contact-search').addEventListener('input', () => renderContacts(contactRows));
     document.querySelector('#contact-channel').addEventListener('change', () => renderContacts(contactRows));
     document.querySelector('#search-button').addEventListener('click', searchCustomers);

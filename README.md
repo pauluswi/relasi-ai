@@ -109,6 +109,7 @@ The script compiles the Java sources with the JDK, bundles local resources, and 
 | `GET /api/v1/sales` | Returns synthetic opportunities, campaigns, and responses filtered to the selected user's customer scope. |
 | `POST /api/v1/sales/opportunities` | Creates an in-scope synthetic opportunity (relationship manager, supervisor, or administrator). |
 | `POST /api/v1/sales/opportunities/{id}` | Moves an in-scope opportunity to a supported pipeline stage (relationship manager, supervisor, or administrator). |
+| `POST /api/v1/sales/campaigns` | Creates a synthetic campaign targeting selected customers within the user's scope. |
 | `POST /api/v1/sales/campaigns/{id}/enrollments` | Enrolls an in-scope customer into a seeded campaign. |
 | `POST /api/v1/sales/campaigns/{id}/responses` | Records or updates an enrolled customer's campaign response. |
 | `POST /api/v1/interactions` | Records an interaction for an in-scope customer, optionally linked to that customer's case. |
@@ -145,7 +146,7 @@ The **Reset demo data** action is available to supervisors and administrators. I
 - Ask “Find customers who have unresolved payment complaints and summarize their cases.” The assistant returns matching customers and cases visible to the selected identity.
 - Open Sales & campaigns to review seeded opportunities and campaign responses limited to the selected identity's customer scope.
 - As a relationship manager, create an opportunity for an in-scope customer and move it through Discovery, Qualification, Proposal, Closed Won, or Closed Lost. Opportunity writes are audited and reset with the seeded demo data.
-- As a relationship manager, enroll an in-scope customer in a seeded campaign and record an engagement status and response summary. Campaign changes are audited and reset with the seeded demo data.
+- As a relationship manager, create a campaign for selected in-scope customers, enroll them, and record engagement status and response summaries. Campaign changes are audited and reset with the seeded demo data.
 
 ### Troubleshooting
 

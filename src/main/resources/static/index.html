@@ -294,6 +294,16 @@
       <div class="section-hero"><div><h2 id="sales-title">Sales &amp; campaigns</h2><p>Relationship opportunities and campaign activity</p></div><span class="badge">Synthetic local workspace</span></div>
       <p class="muted">Opportunity, campaign enrollment, and response changes use synthetic in-memory records and reset when demo data is restored or the app restarts.</p>
       <div class="dashboard-grid" id="sales-metrics"></div>
+      <section class="dashboard-panel" aria-labelledby="leads-title" style="margin-bottom:.9rem">
+        <div class="panel-heading"><div><h3 id="leads-title">Relationship leads</h3><p>Product interests linked to customers in your scope</p></div><span class="badge" id="lead-count">Loading…</span></div>
+        <form id="lead-form" class="form-grid" hidden>
+          <div><label for="lead-customer">Customer</label><select id="lead-customer" name="customerId" required></select></div>
+          <div><label for="lead-interest">Product interest</label><input id="lead-interest" name="productInterest" type="text" maxlength="100" placeholder="e.g. time deposit" required></div>
+          <div class="wide"><label for="lead-name">Lead title</label><input id="lead-name" name="name" type="text" maxlength="120" required></div>
+          <div class="form-actions wide"><button type="submit" style="width:auto">Create lead</button></div>
+        </form>
+        <div id="lead-list" class="customer-list" style="margin-top:.8rem"></div>
+      </section>
       <section class="admin-card" aria-labelledby="new-opportunity-title" style="margin-bottom:.9rem">
         <h3 id="new-opportunity-title">Add an opportunity</h3>
         <p class="muted" id="sales-write-note">Opportunity creation and stage changes are available to relationship managers, supervisors, and administrators.</p>
@@ -615,6 +625,7 @@
         if (identityId !== userSelect.value || requestId !== salesRequest) return;
         document.querySelector('#sales-metrics').replaceChildren(makeText('p', error.message, 'error'));
         document.querySelector('#sales-pipeline').replaceChildren();
+        document.querySelector('#lead-list').replaceChildren();
         document.querySelector('#campaign-list').replaceChildren();
         document.querySelector('#campaign-responses').replaceChildren();
       }
@@ -625,12 +636,14 @@
       const canWrite = ['RELATIONSHIP_MANAGER', 'CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(demoRoles[userSelect.value]);
       const opportunityForm = document.querySelector('#opportunity-form');
       opportunityForm.hidden = !canWrite;
+      document.querySelector('#lead-form').hidden = !canWrite;
       document.querySelector('#campaign-form').hidden = !canWrite;
       document.querySelector('#sales-write-note').textContent = canWrite
-        ? 'Create an opportunity for a customer in your scope. New opportunities start in Discovery.'
-        : 'Opportunity creation and stage changes require relationship manager, supervisor, or administrator access.';
+        ? 'Create and manage opportunities, relationship leads, and campaign activity for customers in your scope.'
+        : 'Sales and campaign changes require relationship manager, supervisor, or administrator access.';
       const customerSelect = document.querySelector('#opportunity-customer');
       customerSelect.replaceChildren(...customers.map(customer => option(customer.id, `${customer.fullName} · ${customer.id}`)));
+      document.querySelector('#lead-customer').replaceChildren(...customers.map(customer => option(customer.id, `${customer.fullName} · ${customer.id}`)));
       const campaignTargets = document.querySelector('#campaign-targets');
       const selectedTargets = new Set([...campaignTargets.selectedOptions].map(item => item.value));
       campaignTargets.replaceChildren(...customers.map(customer => {
@@ -656,6 +669,7 @@
         card.append(makeText('span', label, 'metric-label'), makeText('strong', value, 'metric-value'), makeText('p', foot, 'metric-foot'));
         return card;
       }));
+      renderLeads(data.leads, canWrite);
       const pipeline = document.querySelector('#sales-pipeline');
       pipeline.replaceChildren();
       for (const [stage, label] of columns) {
@@ -750,6 +764,42 @@
       }
     }
 
+    function renderLeads(leads, canWrite) {
+      const container = document.querySelector('#lead-list');
+      container.replaceChildren();
+      document.querySelector('#lead-count').textContent = `${leads.length} leads`;
+      if (!leads.length) {
+        container.append(makeText('p', 'No leads in this identity’s customer scope.', 'empty'));
+        return;
+      }
+      for (const lead of leads) {
+        const card = makeText('article', '', 'detail-card');
+        card.append(makeText('strong', lead.name), makeText('p', `${lead.customerName} · ${lead.productInterest}`, 'muted'));
+        card.append(makeText('span', lead.status.replaceAll('_', ' '), 'queue-badge'));
+        if (canWrite && lead.status === 'NEW') {
+          const actions = makeText('div', '', 'form-actions');
+          for (const status of ['QUALIFIED', 'DISQUALIFIED']) {
+            const button = makeText('button', status === 'QUALIFIED' ? 'Qualify' : 'Disqualify');
+            button.type = 'button';
+            button.addEventListener('click', () => updateLeadStatus(lead.id, status));
+            actions.append(button);
+          }
+          card.append(actions);
+        }
+        if (canWrite && lead.status === 'QUALIFIED') {
+          const convertForm = document.createElement('form'); convertForm.className = 'form-actions';
+          const amount = document.createElement('input'); amount.name = 'amount'; amount.type = 'number'; amount.min = '1'; amount.max = '10000000000000'; amount.step = '1'; amount.required = true;
+          amount.placeholder = 'Opportunity value (IDR)'; amount.setAttribute('aria-label', `Opportunity value for ${lead.name}`);
+          const convert = makeText('button', 'Convert to opportunity'); convert.type = 'submit';
+          convertForm.append(amount, convert);
+          convertForm.addEventListener('submit', event => convertLead(event, lead.id));
+          card.append(convertForm);
+        }
+        if (lead.status === 'CONVERTED') card.append(makeText('small', 'Converted to an opportunity.', 'muted'));
+        container.append(card);
+      }
+    }
+
     function formatCurrency(value, currency) {
       return new Intl.NumberFormat('id-ID', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value);
     }
@@ -770,6 +820,55 @@
         await loadAdministration();
       } catch (error) {
         feedback.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function createLead(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      document.querySelector('#sales-feedback').textContent = 'Saving lead…';
+      try {
+        const result = await api('/api/v1/sales/leads', { method: 'POST', body: new URLSearchParams(new FormData(form)) });
+        form.reset();
+        document.querySelector('#sales-feedback').textContent = `${result.id} created.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function updateLeadStatus(id, status) {
+      try {
+        await api(`/api/v1/sales/leads/${encodeURIComponent(id)}/status`, { method: 'POST', body: new URLSearchParams({ status }) });
+        document.querySelector('#sales-feedback').textContent = `${id} marked ${status.toLowerCase()}.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
+      }
+    }
+
+    async function convertLead(event, id) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        const result = await api(`/api/v1/sales/leads/${encodeURIComponent(id)}/convert`, {
+          method: 'POST', body: new URLSearchParams(new FormData(form))
+        });
+        document.querySelector('#sales-feedback').textContent = `${result.leadId} converted to ${result.opportunityId}.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
       } finally {
         button.disabled = false;
       }
@@ -1688,6 +1787,7 @@
     document.querySelector('#admin-reset').addEventListener('click', resetDemoState);
     document.querySelector('#refresh-admin').addEventListener('click', loadAdministration);
     document.querySelector('#opportunity-form').addEventListener('submit', createOpportunity);
+    document.querySelector('#lead-form').addEventListener('submit', createLead);
     document.querySelector('#campaign-form').addEventListener('submit', createCampaign);
     document.querySelector('#contact-search').addEventListener('input', () => renderContacts(contactRows));
     document.querySelector('#contact-channel').addEventListener('change', () => renderContacts(contactRows));

@@ -144,7 +144,8 @@ public final class RelasiAiApplication {
         }
         if (path.equals(API_PREFIX + "/sales") || path.equals(API_PREFIX + "/sales/opportunities")
                 || path.startsWith(API_PREFIX + "/sales/opportunities/") || path.equals(API_PREFIX + "/sales/campaigns")
-                || path.startsWith(API_PREFIX + "/sales/campaigns/")) {
+                || path.startsWith(API_PREFIX + "/sales/campaigns/") || path.equals(API_PREFIX + "/sales/leads")
+                || path.startsWith(API_PREFIX + "/sales/leads/")) {
             handleSalesRequest(exchange, path);
             return;
         }
@@ -492,6 +493,55 @@ public final class RelasiAiApplication {
                         "id", opportunity.id(), "customerId", opportunity.customerId(), "name", opportunity.name(),
                         "stage", opportunity.stage(), "amount", opportunity.amount(), "currency", opportunity.currency(),
                         "owner", opportunity.owner())));
+            } catch (NumberFormatException exception) {
+                badRequest(exchange, "Opportunity amount must be a whole number of IDR.");
+            } catch (IllegalArgumentException exception) {
+                badRequest(exchange, exception.getMessage());
+            }
+            return;
+        }
+        if (path.equals(API_PREFIX + "/sales/leads") && "POST".equals(method)) {
+            Map<String, String> form = readForm(exchange);
+            if (form == null) return;
+            String customerId = form.getOrDefault("customerId", "").strip();
+            if (CRM.getCustomer360(customerId, user.customerScope()).isEmpty()) {
+                send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"customer_not_found\"}");
+                return;
+            }
+            try {
+                var lead = SALES.createLead(user.id(), customerId, form.get("name"), form.get("productInterest"), user.customerScope());
+                send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                        "id", lead.id(), "customerId", lead.customerId(), "name", lead.name(),
+                        "productInterest", lead.productInterest(), "status", lead.status(), "owner", lead.owner())));
+            } catch (IllegalArgumentException exception) {
+                badRequest(exchange, exception.getMessage());
+            }
+            return;
+        }
+        if (path.startsWith(API_PREFIX + "/sales/leads/") && "POST".equals(method)) {
+            String[] segments = path.substring((API_PREFIX + "/sales/leads/").length()).split("/");
+            if (segments.length != 2) {
+                send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"not_found\"}");
+                return;
+            }
+            String id = URLDecoder.decode(segments[0], StandardCharsets.UTF_8);
+            Map<String, String> form = readForm(exchange);
+            if (form == null) return;
+            try {
+                if ("status".equals(segments[1])) {
+                    var lead = SALES.updateLeadStatus(user.id(), id, form.get("status"), user.customerScope());
+                    send(exchange, 200, "application/json; charset=utf-8", CrmJson.stringify(Map.of("id", lead.id(), "status", lead.status())));
+                } else if ("convert".equals(segments[1])) {
+                    long amount = Long.parseLong(form.getOrDefault("amount", ""));
+                    var conversion = SALES.convertLead(user.id(), id, amount, user.customerScope());
+                    send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                            "leadId", conversion.lead().id(), "leadStatus", conversion.lead().status(),
+                            "opportunityId", conversion.opportunity().id(), "opportunityName", conversion.opportunity().name())));
+                } else {
+                    send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"not_found\"}");
+                }
+            } catch (SalesService.LeadNotFoundException exception) {
+                send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"lead_not_found\"}");
             } catch (NumberFormatException exception) {
                 badRequest(exchange, "Opportunity amount must be a whole number of IDR.");
             } catch (IllegalArgumentException exception) {

@@ -15,6 +15,8 @@ public final class SalesService {
     private static final Set<String> CAMPAIGN_STATUSES = Set.of("DRAFT", "ACTIVE", "PAUSED", "COMPLETED");
     private final List<Opportunity> opportunities = new ArrayList<>();
     private final AtomicInteger nextNumber = new AtomicInteger(1005);
+    private final List<Lead> leads = new ArrayList<>();
+    private final AtomicInteger nextLeadNumber = new AtomicInteger(1003);
     private final List<Campaign> campaigns = new ArrayList<>();
     private final List<CampaignResponse> responses = new ArrayList<>();
     private final AtomicInteger nextResponseNumber = new AtomicInteger(1004);
@@ -33,6 +35,10 @@ public final class SalesService {
         opportunities.add(new Opportunity("OPP-1003", "CUST-1003", "Business banking review", "DISCOVERY", 240_000_000, "IDR", "relationship-manager"));
         opportunities.add(new Opportunity("OPP-1004", "CUST-1004", "Card upgrade follow-up", "CLOSED_WON", 36_000_000, "IDR", "relationship-manager"));
         nextNumber.set(1005);
+        leads.clear();
+        leads.add(new Lead("LEAD-1001", "CUST-1001", "Everyday savings review", "SAVINGS", "NEW", "service-officer"));
+        leads.add(new Lead("LEAD-1002", "CUST-1003", "Business cash management", "CASH_MANAGEMENT", "QUALIFIED", "relationship-manager"));
+        nextLeadNumber.set(1003);
         campaigns.clear();
         Set<String> allCustomers = Set.of("CUST-1001", "CUST-1002", "CUST-1003", "CUST-1004");
         campaigns.add(new Campaign("CMP-1001", "Everyday banking check-in", "CUSTOMER_RETENTION", "ACTIVE", allCustomers,
@@ -55,6 +61,12 @@ public final class SalesService {
                 .map(item -> Map.<String, Object>of(
                         "id", item.id(), "customerId", item.customerId(), "customerName", customers.get(item.customerId()),
                         "name", item.name(), "stage", item.stage(), "amount", item.amount(), "currency", item.currency(), "owner", item.owner()))
+                .toList();
+        List<Map<String, Object>> scopedLeads = leads.stream()
+                .filter(item -> permittedCustomerIds.contains(item.customerId()))
+                .map(item -> Map.<String, Object>of("id", item.id(), "customerId", item.customerId(),
+                        "customerName", customers.get(item.customerId()), "name", item.name(),
+                        "productInterest", item.productInterest(), "status", item.status(), "owner", item.owner()))
                 .toList();
         List<Map<String, Object>> scopedCampaigns = campaigns.stream().map(campaign -> {
             Set<String> eligibleCustomerIds = campaign.eligibleCustomerIds().stream()
@@ -85,7 +97,53 @@ public final class SalesService {
                         "customerName", customers.get(item.customerId()), "summary", item.summary(),
                         "channel", item.channel(), "status", item.status()))
                 .toList();
-        return Map.of("opportunities", scopedOpportunities, "campaigns", scopedCampaigns, "responses", scopedResponses);
+        return Map.of("leads", scopedLeads, "opportunities", scopedOpportunities,
+                "campaigns", scopedCampaigns, "responses", scopedResponses);
+    }
+
+    public synchronized Lead createLead(String actorId, String customerId, String name, String productInterest,
+                                        List<String> permittedCustomerIds) {
+        if (!permittedCustomerIds.contains(customerId)) throw new LeadNotFoundException();
+        String normalizedName = name == null ? "" : name.strip();
+        String normalizedInterest = productInterest == null ? "" : productInterest.strip();
+        require(!normalizedName.isEmpty() && normalizedName.length() <= 120, "Lead name is required and must be 120 characters or fewer.");
+        require(!normalizedInterest.isEmpty() && normalizedInterest.length() <= 100,
+                "Product interest is required and must be 100 characters or fewer.");
+        Lead lead = new Lead("LEAD-%04d".formatted(nextLeadNumber.getAndIncrement()), customerId,
+                normalizedName, normalizedInterest, "NEW", actorId);
+        leads.add(lead);
+        audit.record(actorId, "LEAD_CREATED", lead.id() + "/" + customerId, "SUCCESS");
+        return lead;
+    }
+
+    public synchronized Lead updateLeadStatus(String actorId, String id, String status,
+                                              List<String> permittedCustomerIds) {
+        Lead current = lead(id, permittedCustomerIds);
+        String nextStatus = status == null ? "" : status.strip().toUpperCase();
+        require(Set.of("QUALIFIED", "DISQUALIFIED").contains(nextStatus), "Choose Qualified or Disqualified.");
+        require("NEW".equals(current.status()), "Only new leads can be qualified or disqualified.");
+        Lead updated = new Lead(current.id(), current.customerId(), current.name(), current.productInterest(), nextStatus, current.owner());
+        leads.set(leads.indexOf(current), updated);
+        audit.record(actorId, "LEAD_STATUS_CHANGED", id, "SUCCESS:" + nextStatus);
+        return updated;
+    }
+
+    public synchronized LeadConversion convertLead(String actorId, String id, long amount,
+                                                   List<String> permittedCustomerIds) {
+        Lead current = lead(id, permittedCustomerIds);
+        require("QUALIFIED".equals(current.status()), "Only qualified leads can be converted.");
+        Opportunity opportunity = create(actorId, current.customerId(), current.productInterest() + " opportunity",
+                amount, permittedCustomerIds);
+        Lead converted = new Lead(current.id(), current.customerId(), current.name(), current.productInterest(), "CONVERTED", current.owner());
+        leads.set(leads.indexOf(current), converted);
+        audit.record(actorId, "LEAD_CONVERTED", id + "/" + opportunity.id(), "SUCCESS");
+        return new LeadConversion(converted, opportunity);
+    }
+
+    private Lead lead(String id, List<String> permittedCustomerIds) {
+        Lead current = leads.stream().filter(item -> item.id().equals(id)).findFirst().orElseThrow(LeadNotFoundException::new);
+        if (!permittedCustomerIds.contains(current.customerId())) throw new LeadNotFoundException();
+        return current;
     }
 
     public synchronized Opportunity create(String actorId, String customerId, String name, long amount,
@@ -206,6 +264,16 @@ public final class SalesService {
 
     public record Opportunity(String id, String customerId, String name, String stage, long amount,
                               String currency, String owner) {
+    }
+
+    public record Lead(String id, String customerId, String name, String productInterest,
+                       String status, String owner) {
+    }
+
+    public record LeadConversion(Lead lead, Opportunity opportunity) {
+    }
+
+    public static final class LeadNotFoundException extends RuntimeException {
     }
 
     public static final class OpportunityNotFoundException extends RuntimeException {

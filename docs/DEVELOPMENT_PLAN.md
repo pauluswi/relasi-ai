@@ -38,7 +38,7 @@ The default experience should start with one command on a developer machine with
 
 - Persistent database, Docker/Compose, cloud deployment, external identity, real MCP transport/server, and external model or CRM integrations.
 - Real vector database, Redis, Kubernetes, payments, real customer data, autonomous customer communication, and production banking integrations.
-- Leads, opportunities, and campaigns until the core cognitive CRM flows are complete.
+- Advanced sales planning beyond the synthetic lead, opportunity, and campaign workflows implemented in M7/M8.
 
 ## 4. Milestones
 
@@ -166,11 +166,11 @@ Each milestone leaves the app runnable in mock mode and maintains the no-depende
 
 **Case queue slice:** Added a dedicated navigation destination with scope-limited case counts, active/overdue summaries, customer/reference/subject search, status and priority filters, SLA highlighting, and a link to each in-scope Customer 360 profile.
 
-**Broader workspace UI slice:** Added a standalone contact directory that composes contacts only from customer profiles visible to the selected identity, with search and preferred-channel filtering. Added a sales and campaign dashboard backed by deterministic in-memory records and scope-filtered `GET /api/v1/sales`. Relationship managers, supervisors, and administrators can create in-scope opportunities and move them through validated stages. They can create campaigns with an audience selected from their scope, move campaigns through Draft, Active, Paused, and Completed states, enroll in-scope customers in active campaigns, and record or update response status, channel, and summary. Writes are audited and reset with demo data. Added a workspace administration screen for runtime and CRM profile status, current local demo identity and scope, supervisor/admin-only audit history, and the existing role-gated reset action. These UI destinations do not change the no-database/no-external-services run mode.
+**Broader workspace UI slice:** Added a standalone contact directory that composes contacts only from customer profiles visible to the selected identity, with search and preferred-channel filtering. Added a sales and campaign dashboard backed by deterministic in-memory records and scope-filtered `GET /api/v1/sales`. Relationship managers, supervisors, and administrators can create in-scope opportunities and move them through validated stages; create relationship leads, qualify/disqualify them, and convert qualified leads into opportunities; and create campaigns with an audience selected from their scope, move campaigns through Draft, Active, Paused, and Completed states, enroll in-scope customers in active campaigns, and record or update response status, channel, and summary. Writes are audited and reset with demo data. Added a workspace administration screen for runtime and CRM profile status, current local demo identity and scope, supervisor/admin-only audit history, and the existing role-gated reset action. These UI destinations do not change the no-database/no-external-services run mode.
 
-### Optional M8 — Sales and campaign features
+### M8 — Sales and campaign features — in progress
 
-The M7 UI now supports opportunity creation/stage changes and campaign creation, lifecycle management, enrollment, and response tracking against scoped local fixtures. Remaining work includes leads, campaign audience editing, and product recommendations. Keep recommendations advisory and fixture-backed.
+The M7 UI now supports relationship lead creation, qualification/disqualification, conversion into opportunities, opportunity stage changes, campaign creation, lifecycle management, enrollment, and response tracking against scoped local fixtures. Remaining work includes lead editing, campaign audience editing, and product recommendations. Keep recommendations advisory and fixture-backed.
 
 ## 5. Demonstration Scenario Mapping
 

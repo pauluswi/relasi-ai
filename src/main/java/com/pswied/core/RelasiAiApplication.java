@@ -143,7 +143,7 @@ public final class RelasiAiApplication {
             return;
         }
         if (path.equals(API_PREFIX + "/sales") || path.equals(API_PREFIX + "/sales/opportunities")
-                || path.startsWith(API_PREFIX + "/sales/opportunities/")) {
+                || path.startsWith(API_PREFIX + "/sales/opportunities/") || path.startsWith(API_PREFIX + "/sales/campaigns/")) {
             handleSalesRequest(exchange, path);
             return;
         }
@@ -508,6 +508,37 @@ public final class RelasiAiApplication {
                         "id", updated.id(), "stage", updated.stage())));
             } catch (SalesService.OpportunityNotFoundException exception) {
                 send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"opportunity_not_found\"}");
+            } catch (IllegalArgumentException exception) {
+                badRequest(exchange, exception.getMessage());
+            }
+            return;
+        }
+        if (path.startsWith(API_PREFIX + "/sales/campaigns/") && "POST".equals(method)) {
+            String[] segments = path.substring((API_PREFIX + "/sales/campaigns/").length()).split("/");
+            if (segments.length != 2) {
+                send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"not_found\"}");
+                return;
+            }
+            String campaignId = URLDecoder.decode(segments[0], StandardCharsets.UTF_8);
+            Map<String, String> form = readForm(exchange);
+            if (form == null) return;
+            String customerId = form.getOrDefault("customerId", "").strip();
+            try {
+                if ("enrollments".equals(segments[1])) {
+                    SALES.enroll(user.id(), campaignId, customerId, user.customerScope());
+                    send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                            "campaignId", campaignId, "customerId", customerId, "status", "ENROLLED")));
+                } else if ("responses".equals(segments[1])) {
+                    var response = SALES.recordResponse(user.id(), campaignId, customerId, form.get("summary"),
+                            form.get("channel"), form.get("status"), user.customerScope());
+                    send(exchange, 201, "application/json; charset=utf-8", CrmJson.stringify(Map.of(
+                            "id", response.id(), "campaignId", response.campaignId(), "customerId", response.customerId(),
+                            "summary", response.summary(), "channel", response.channel(), "status", response.status())));
+                } else {
+                    send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"not_found\"}");
+                }
+            } catch (SalesService.CampaignNotFoundException exception) {
+                send(exchange, 404, "application/json; charset=utf-8", "{\"error\":\"campaign_or_customer_not_found\"}");
             } catch (IllegalArgumentException exception) {
                 badRequest(exchange, exception.getMessage());
             }

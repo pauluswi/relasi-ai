@@ -173,6 +173,8 @@
     .pipeline-card .form-actions { gap: .35rem; margin-top: .6rem; padding: 0; border: 0; }
     .pipeline-card .form-actions select { flex: 1; width: auto; min-width: 0; padding: .38rem; font-size: .76rem; }
     .pipeline-card .form-actions button { width: auto; padding: .4rem .55rem; font-size: .76rem; }
+    .detail-card .form-actions select, .detail-card .form-actions input { flex: 1 1 125px; width: auto; min-width: 0; padding: .42rem; font-size: .78rem; }
+    .detail-card .form-actions button { flex: 0 0 auto; width: auto; padding: .42rem .6rem; font-size: .78rem; }
     .queue-badge.overdue { color: #9b3028; background: #fde9e6; }
     .case-queue-table button { width: auto; padding: .42rem .62rem; font-size: .75rem; white-space: nowrap; }
     .reset-feedback { position: absolute; top: calc(100% + .25rem); right: 1.25rem; z-index: 3; margin: 0; color: #8a371f; background: #fff4eb; border-radius: 7px; padding: .35rem .55rem; font-size: .75rem; box-shadow: 0 3px 12px #172b3a18; }
@@ -290,7 +292,7 @@
     </section>
     <section id="sales" class="card" aria-labelledby="sales-title">
       <div class="section-hero"><div><h2 id="sales-title">Sales &amp; campaigns</h2><p>Relationship opportunities and campaign activity</p></div><span class="badge">Illustrative mock workspace</span></div>
-      <p class="muted">Opportunity records are synthetic and held in memory. Campaign enrollment and response recording remain read-only showcase data.</p>
+      <p class="muted">Opportunity, campaign enrollment, and response changes use synthetic in-memory records and reset when demo data is restored or the app restarts.</p>
       <div class="dashboard-grid" id="sales-metrics"></div>
       <section class="admin-card" aria-labelledby="new-opportunity-title" style="margin-bottom:.9rem">
         <h3 id="new-opportunity-title">Add an opportunity</h3>
@@ -621,9 +623,9 @@
       const customerSelect = document.querySelector('#opportunity-customer');
       customerSelect.replaceChildren(...customers.map(customer => option(customer.id, `${customer.fullName} · ${customer.id}`)));
       const columns = [
-        ['DISCOVERY', 'Discovery'], ['QUALIFICATION', 'Qualification'], ['PROPOSAL', 'Proposal'], ['CLOSED_WON', 'Closed won']
+        ['DISCOVERY', 'Discovery'], ['QUALIFICATION', 'Qualification'], ['PROPOSAL', 'Proposal'], ['CLOSED_WON', 'Closed won'], ['CLOSED_LOST', 'Closed lost']
       ];
-      const openOpportunities = opportunities.filter(item => item.stage !== 'CLOSED_WON');
+      const openOpportunities = opportunities.filter(item => !['CLOSED_WON', 'CLOSED_LOST'].includes(item.stage));
       const pipelineValue = openOpportunities.reduce((total, item) => total + item.amount, 0);
       const invited = data.campaigns.reduce((total, campaign) => total + campaign.invited, 0);
       const responses = data.campaigns.reduce((total, campaign) => total + campaign.responses, 0);
@@ -669,8 +671,41 @@
       const campaignContainer = document.querySelector('#campaign-list'); campaignContainer.replaceChildren();
       if (!data.campaigns.length) campaignContainer.append(makeText('p', 'No campaigns target this identity’s customer scope.', 'muted'));
       for (const campaign of data.campaigns) {
-        const row = makeText('article', '', 'dashboard-row');
-        row.append(makeText('strong', campaign.name), makeText('small', `${campaign.type.replaceAll('_', ' ')} · ${campaign.invited} invited · ${campaign.responses} responses · ${campaign.engagementRate}% engagement`)); campaignContainer.append(row);
+        const card = makeText('article', '', 'detail-card');
+        card.append(makeText('strong', campaign.name), makeText('p', `${campaign.type.replaceAll('_', ' ')} · ${campaign.invited} enrolled · ${campaign.responses} responses · ${campaign.engagementRate}% engagement`, 'muted'));
+        if (canWrite) {
+          const enrollmentForm = document.createElement('form'); enrollmentForm.className = 'form-actions';
+          const customerSelect = document.createElement('select'); customerSelect.name = 'customerId'; customerSelect.setAttribute('aria-label', `Customer to enroll in ${campaign.name}`);
+          const eligible = campaign.availableCustomerIds.map(id => customers.find(customer => customer.id === id)).filter(Boolean);
+          customerSelect.append(...eligible.map(customer => option(customer.id, `${customer.fullName} · ${customer.id}`)));
+          const enrollButton = makeText('button', 'Enroll customer'); enrollButton.type = 'submit'; enrollButton.disabled = !eligible.length;
+          enrollmentForm.append(customerSelect, enrollButton);
+          enrollmentForm.addEventListener('submit', event => enrollCampaignCustomer(event, campaign.id));
+          card.append(enrollmentForm);
+        }
+        for (const enrollment of campaign.enrollments) {
+          const participant = makeText('div', '', 'dashboard-row');
+          const participantCopy = document.createElement('div');
+          participantCopy.append(makeText('strong', enrollment.customerName), makeText('small', enrollment.response ? `${enrollment.response.status.replaceAll('_', ' ')} · ${enrollment.response.summary}` : 'Enrolled · no response recorded'));
+          participant.append(participantCopy);
+          if (canWrite) {
+            const responseForm = document.createElement('form'); responseForm.className = 'form-actions';
+            const summary = document.createElement('input'); summary.name = 'summary'; summary.required = true; summary.maxLength = 500;
+            summary.placeholder = 'Response summary'; summary.setAttribute('aria-label', `Response summary for ${enrollment.customerName}`);
+            if (enrollment.response) summary.value = enrollment.response.summary;
+            const channel = document.createElement('select'); channel.name = 'channel'; channel.setAttribute('aria-label', `Response channel for ${enrollment.customerName}`);
+            for (const value of ['EMAIL', 'TELEPHONE', 'BRANCH', 'WEB_CHAT', 'MOBILE_BANKING']) channel.append(option(value, value.replaceAll('_', ' ')));
+            const status = document.createElement('select'); status.name = 'status'; status.setAttribute('aria-label', `Response status for ${enrollment.customerName}`);
+            for (const value of ['ENGAGED', 'RESPONDED', 'DECLINED', 'FOLLOW_UP']) status.append(option(value, value.replaceAll('_', ' ')));
+            if (enrollment.response) { channel.value = enrollment.response.channel; status.value = enrollment.response.status; }
+            const record = makeText('button', 'Save response'); record.type = 'submit';
+            responseForm.append(summary, channel, status, record);
+            responseForm.addEventListener('submit', event => recordCampaignResponse(event, campaign.id, enrollment.customerId));
+            participant.append(responseForm);
+          }
+          card.append(participant);
+        }
+        campaignContainer.append(card);
       }
       const responseContainer = document.querySelector('#campaign-responses'); responseContainer.replaceChildren();
       if (!data.responses.length) responseContainer.append(makeText('p', 'No campaign responses in this identity’s scope.', 'muted'));
@@ -714,6 +749,44 @@
           method: 'POST', body: new URLSearchParams({ stage })
         });
         document.querySelector('#sales-feedback').textContent = `${id} moved to ${stage.replaceAll('_', ' ')}.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function enrollCampaignCustomer(event, campaignId) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        const result = await api(`/api/v1/sales/campaigns/${encodeURIComponent(campaignId)}/enrollments`, {
+          method: 'POST', body: new URLSearchParams(new FormData(form))
+        });
+        document.querySelector('#sales-feedback').textContent = `${result.customerId} enrolled in ${campaignId}.`;
+        await loadSalesWorkspace();
+        await loadAdministration();
+      } catch (error) {
+        document.querySelector('#sales-feedback').textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function recordCampaignResponse(event, campaignId, customerId) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      try {
+        const body = new URLSearchParams(new FormData(form));
+        body.set('customerId', customerId);
+        await api(`/api/v1/sales/campaigns/${encodeURIComponent(campaignId)}/responses`, { method: 'POST', body });
+        document.querySelector('#sales-feedback').textContent = `Campaign response saved for ${customerId}.`;
         await loadSalesWorkspace();
         await loadAdministration();
       } catch (error) {

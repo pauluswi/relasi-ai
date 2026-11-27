@@ -147,9 +147,10 @@
     .ai-input-grid button { width: auto; min-height: 52px; padding: .7rem 1rem; white-space: nowrap; }
     .ai-privacy-note { margin: .55rem 0 0; color: #77858c; font-size: .73rem; }
     .scenario-heading { margin: 1rem 0 .5rem; color: #566771; font-size: .75rem; font-weight: 700; }
-    .scenario-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; }
-    .scenario-button { min-height: 82px; padding: .7rem .75rem; border: 1px solid #dfe8e5; border-radius: 10px; color: #1d3c4a; background: white; text-align: left; }
-    .scenario-button:hover { border-color: #83b8a9; background: #f5faf8; }
+    .scenario-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+    .scenario-button { min-height: 92px; padding: .8rem .85rem; border: 1px solid #dfe8e5; border-radius: 11px; color: #1d3c4a; background: white; text-align: left; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+    .scenario-button:hover { border-color: #83b8a9; background: #f5faf8; transform: translateY(-1px); }
+    .scenario-button:focus-visible { outline: 3px solid #55a993; outline-offset: 2px; }
     .scenario-button strong, .scenario-button small { display: block; }
     .scenario-button strong { font-size: .8rem; }
     .scenario-button small { margin-top: .28rem; color: #78868c; font-size: .69rem; font-weight: 450; line-height: 1.35; }
@@ -158,6 +159,14 @@
     .ai-response-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; margin-bottom: .7rem; }
     .ai-response-meta .badge { font-size: .72rem; }
     .ai-answer-copy { margin: .5rem 0 .85rem; padding: .8rem 1rem; border-left: 3px solid #168c79; border-radius: 0 9px 9px 0; background: #f4faf7; line-height: 1.58; white-space: pre-line; }
+    .ai-signal-summary { margin: .8rem 0 1rem; }
+    .ai-signal-summary h4 { margin: 0 0 .5rem; color: #52636f; font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; }
+    .ai-signal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+    .ai-signal-card { min-width: 0; padding: .65rem .75rem; border: 1px solid #e3eae7; border-radius: 9px; background: #fbfcfc; }
+    .ai-signal-card small { display: block; color: #77858c; font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .ai-signal-card strong { display: block; margin-top: .22rem; color: #203847; font-size: .82rem; line-height: 1.35; overflow-wrap: anywhere; }
+    .ai-entity-list { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .55rem; }
+    .ai-entity-chip { padding: .28rem .5rem; border: 1px solid #dce9e4; border-radius: 99px; color: #365a50; background: #f3faf6; font-size: .7rem; }
     .ai-evidence-list { display: grid; gap: .55rem; margin: .55rem 0; }
     .ai-evidence-card { padding: .7rem .8rem; border: 1px solid #e3eae7; border-radius: 9px; background: #fbfcfc; }
     .ai-evidence-card strong { display: block; font-size: .82rem; }
@@ -253,6 +262,7 @@
       .ai-input-grid { grid-template-columns: 1fr; }
       .ai-input-grid button { width: 100%; }
       .scenario-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .ai-signal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 420px) { .chart-row { grid-template-columns: 95px minmax(45px, 1fr) 1.5rem; gap: .4rem; font-size: .75rem; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
@@ -308,12 +318,14 @@
           <button id="overview-ask-assistant" type="button">Ask RELASI</button>
         </div>
         <p class="ai-privacy-note">Answers use only authorized synthetic workspace data. Recommendations stay advisory; record changes require review.</p>
-        <p class="scenario-heading">Or try a guided scenario</p>
+        <p class="scenario-heading">Explore RELASI AI capabilities</p>
         <div class="scenario-grid" aria-label="Guided AI demonstration scenarios">
-          <button class="scenario-button" type="button" data-prompt="Summarize this customer's relationship with the bank." data-requires-customer="true"><strong>Customer brief</strong><small>See products, cases, and recent contact together</small></button>
-          <button class="scenario-button" type="button" data-prompt="A transfer of IDR 5 million yesterday failed and the recipient has not received the money."><strong>Complaint triage</strong><small>Classify a payment issue and extract key details</small></button>
-          <button class="scenario-button" type="button" data-prompt="What is the procedure for handling an unsuccessful BI-FAST transaction?"><strong>Find guidance</strong><small>Get a cited answer from the local knowledge library</small></button>
-          <button class="scenario-button" type="button" data-prompt="What should I do next for this customer?" data-requires-customer="true"><strong>Plan a follow-up</strong><small>Review evidence-backed next actions</small></button>
+          <button class="scenario-button" type="button" data-prompt="Summarize this customer's relationship with the bank." data-requires-customer="true"><strong>Customer 360 brief</strong><small>Bring products, interactions, and open cases into one view</small></button>
+          <button class="scenario-button" type="button" data-prompt="A transfer of IDR 5 million yesterday failed and the recipient has not received the money."><strong>Complaint intelligence</strong><small>Classify intent and sentiment; extract transaction details</small></button>
+          <button class="scenario-button" type="button" data-prompt="What is the procedure for handling an unsuccessful BI-FAST transaction?"><strong>Knowledge copilot</strong><small>Find local guidance, cite sources, or abstain if unsupported</small></button>
+          <button class="scenario-button" type="button" data-prompt="What should I do next for this customer?" data-requires-customer="true"><strong>Next best action</strong><small>Suggest a follow-up grounded in this customer's context</small></button>
+          <button class="scenario-button" type="button" data-prompt="Find customers who have unresolved payment complaints and summarize their cases."><strong>Case discovery</strong><small>Find unresolved complaints within your authorized scope</small></button>
+          <button class="scenario-button" type="button" data-prompt="Create a high-priority complaint case for this customer." data-requires-customer="true"><strong>Assisted case creation</strong><small>Review a proposed case before confirming the change</small></button>
         </div>
         <div id="overview-ai-result" class="ai-response-shell" aria-live="polite"></div>
       </section>
@@ -1801,6 +1813,31 @@
       meta.append(makeText('span', response.abstained ? 'Evidence not found' : response.grounded ? 'Source grounded' : 'CRM context response', 'badge'));
       if (response.customerId) meta.append(makeText('span', `Customer context · ${response.customerId}`, 'analysis-pill'));
       responseCard.append(meta, makeText('p', response.answer, 'ai-answer-copy'));
+      const signalSummary = makeText('section', '', 'ai-signal-summary');
+      signalSummary.setAttribute('aria-label', 'AI analysis summary');
+      signalSummary.append(makeText('h4', 'AI analysis'));
+      const signalGrid = makeText('div', '', 'ai-signal-grid');
+      const addSignal = (label, value, note = '') => {
+        const signal = makeText('div', '', 'ai-signal-card');
+        signal.append(makeText('small', label), makeText('strong', value));
+        if (note) signal.append(makeText('small', note));
+        signalGrid.append(signal);
+      };
+      addSignal('Detected intent', response.nlp.intent.replaceAll('_', ' '), `Rule match · ${Math.round(response.nlp.confidence * 100)}%`);
+      addSignal('Customer sentiment', response.nlp.sentiment.replaceAll('_', ' '));
+      addSignal('Suggested priority', response.nlp.suggestedPriority);
+      addSignal('Suggested case type', response.nlp.suggestedCaseCategory.replaceAll('_', ' '));
+      signalSummary.append(signalGrid);
+      const extractedEntities = makeText('div', '', 'ai-entity-list');
+      if (response.nlp.entities.length) {
+        for (const entity of response.nlp.entities) {
+          extractedEntities.append(makeText('span', `${entity.type.replaceAll('_', ' ')} · ${entity.value}`, 'ai-entity-chip'));
+        }
+      } else {
+        extractedEntities.append(makeText('span', 'No key details extracted', 'muted'));
+      }
+      signalSummary.append(extractedEntities);
+      responseCard.append(signalSummary);
       if (response.caseAggregation) {
         responseCard.append(makeText('h3', `Unresolved payment complaints · ${response.totalCases} case(s)`));
         if (!response.caseAggregation.length) {

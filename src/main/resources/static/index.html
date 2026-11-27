@@ -30,6 +30,8 @@
     .sidebar { position: sticky; top: 98px; min-width: 0; }
     .sidebar-overline { margin: .1rem .7rem .7rem; color: #86939c; font-size: .67rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
     .sidebar nav { display: grid; gap: .22rem; }
+    .nav-group { display: grid; gap: .22rem; margin: 0 0 .55rem; }
+    .nav-group-label { margin: .5rem .7rem .2rem; color: #89969e; font-size: .64rem; font-weight: 760; letter-spacing: .11em; text-transform: uppercase; }
     .nav-link { display: flex; align-items: center; gap: .75rem; min-height: 42px; box-sizing: border-box; padding: .55rem .7rem; border-radius: 9px; color: #50616d; text-decoration: none; font-size: .87rem; font-weight: 620; }
     .nav-link:hover { background: #e7eeeb; color: #193d49; }
     .nav-link[aria-current="page"] { background: #dfefe8; color: #145d55; box-shadow: inset 3px 0 #168c79; }
@@ -127,6 +129,44 @@
     .priority-tag { display: inline-block; padding: .2rem .48rem; border-radius: 99px; color: #91510d; background: #fff0d7; font-size: .7rem; font-weight: 750; white-space: nowrap; }
     .priority-tag.normal { color: #38624e; background: #e3f4e9; }
     .dashboard-scope { color: #73808b; font-size: .78rem; }
+    .ai-hero { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: .9rem; padding: 1.7rem 1.8rem; border-radius: 18px; color: white; background: radial-gradient(ellipse at 86% 4%, #35a89165 0, transparent 37%), linear-gradient(115deg, #102b46, #174b58); box-shadow: 0 12px 30px #153e4a22; }
+    .ai-hero-copy { max-width: 650px; }
+    .ai-hero .eyebrow { margin: 0 0 .55rem; color: #9ad4c5; text-transform: uppercase; letter-spacing: .14em; font-size: .69rem; font-weight: 760; }
+    .ai-hero h2 { margin: 0; font-size: clamp(1.65rem, 3.3vw, 2.5rem); line-height: 1.08; letter-spacing: -.045em; }
+    .ai-hero p { margin: .65rem 0 0; color: #d2e2e6; line-height: 1.5; }
+    .ai-hero-signals { display: grid; gap: .45rem; justify-items: end; }
+    .ai-signal { display: inline-flex; align-items: center; gap: .45rem; border: 1px solid #ffffff38; border-radius: 99px; padding: .42rem .7rem; color: #e4f2ef; font-size: .72rem; white-space: nowrap; }
+    .ai-signal::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #79d1ac; }
+    .ai-start-card { margin: .9rem 0; padding: 1.2rem; border: 1px solid #cfe0de; border-radius: 16px; background: linear-gradient(135deg, #ffffff, #f5faf8); box-shadow: 0 9px 28px #153e4a0b; }
+    .ai-start-heading { display: flex; align-items: start; justify-content: space-between; gap: .8rem; margin-bottom: .9rem; }
+    .ai-start-heading h3 { margin: 0; font-size: 1.03rem; }
+    .ai-start-heading p { margin: .25rem 0 0; color: #75818a; font-size: .82rem; }
+    .ai-input-grid { display: grid; grid-template-columns: minmax(190px, .35fr) minmax(0, 1fr) auto; gap: .65rem; align-items: end; }
+    .ai-input-grid textarea { min-height: 54px; max-height: 130px; resize: vertical; padding: .7rem .8rem; border: 1px solid #b9c6d4; border-radius: 9px; font: inherit; }
+    .ai-input-grid label { color: #596a75; font-size: .75rem; }
+    .ai-input-grid button { width: auto; min-height: 52px; padding: .7rem 1rem; white-space: nowrap; }
+    .ai-privacy-note { margin: .55rem 0 0; color: #77858c; font-size: .73rem; }
+    .scenario-heading { margin: 1rem 0 .5rem; color: #566771; font-size: .75rem; font-weight: 700; }
+    .scenario-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; }
+    .scenario-button { min-height: 82px; padding: .7rem .75rem; border: 1px solid #dfe8e5; border-radius: 10px; color: #1d3c4a; background: white; text-align: left; }
+    .scenario-button:hover { border-color: #83b8a9; background: #f5faf8; }
+    .scenario-button strong, .scenario-button small { display: block; }
+    .scenario-button strong { font-size: .8rem; }
+    .scenario-button small { margin-top: .28rem; color: #78868c; font-size: .69rem; font-weight: 450; line-height: 1.35; }
+    .ai-response-shell { margin-top: .85rem; }
+    .ai-response-card { border: 1px solid #dce8e4; border-radius: 12px; padding: 1rem; background: white; }
+    .ai-response-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; margin-bottom: .7rem; }
+    .ai-response-meta .badge { font-size: .72rem; }
+    .ai-answer-copy { margin: .5rem 0 .85rem; padding: .8rem 1rem; border-left: 3px solid #168c79; border-radius: 0 9px 9px 0; background: #f4faf7; line-height: 1.58; white-space: pre-line; }
+    .ai-evidence-list { display: grid; gap: .55rem; margin: .55rem 0; }
+    .ai-evidence-card { padding: .7rem .8rem; border: 1px solid #e3eae7; border-radius: 9px; background: #fbfcfc; }
+    .ai-evidence-card strong { display: block; font-size: .82rem; }
+    .ai-evidence-card small { display: block; margin-top: .18rem; color: #73808b; }
+    .ai-response-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
+    .ai-response-actions button { width: auto; padding: .48rem .68rem; font-size: .78rem; }
+    .ai-trace-details { margin-top: .7rem; padding-top: .65rem; border-top: 1px solid #e7eeeb; }
+    .ai-trace-details summary { color: #5a6c76; cursor: pointer; font-size: .78rem; font-weight: 650; }
+    .ai-trace-details .trace-list { margin-top: .6rem; }
     .customer-search-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .75rem; align-items: end; }
     .customer-search-form button { width: auto; min-width: 100px; }
     .connection-pill.is-unavailable { color: #ffc3b8; }
@@ -188,6 +228,8 @@
       .sidebar { position: sticky; top: 170px; z-index: 10; padding: .35rem; border: 1px solid #dce4ed; border-radius: 11px; background: #f6f8f7ed; backdrop-filter: blur(12px); }
       .sidebar-overline, .sidebar-foot { display: none; }
       .sidebar nav { display: flex; gap: .2rem; overflow-x: auto; scrollbar-width: thin; }
+      .nav-group { display: contents; }
+      .nav-group-label { display: none; }
       .nav-link { flex: 0 0 auto; min-height: 38px; padding: .45rem .6rem; font-size: .78rem; }
       .nav-link[aria-current="page"] { box-shadow: inset 0 -3px #168c79; }
       .nav-number { display: none; }
@@ -206,6 +248,11 @@
       .admin-grid { grid-template-columns: 1fr; }
       .pipeline { grid-template-columns: 1fr; }
       .contact-filters { grid-template-columns: 1fr; }
+      .ai-hero { align-items: start; flex-direction: column; padding: 1.25rem; }
+      .ai-hero-signals { justify-items: start; display: flex; flex-wrap: wrap; }
+      .ai-input-grid { grid-template-columns: 1fr; }
+      .ai-input-grid button { width: 100%; }
+      .scenario-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 420px) { .chart-row { grid-template-columns: 95px minmax(45px, 1fr) 1.5rem; gap: .4rem; font-size: .75rem; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
@@ -229,24 +276,47 @@
     <aside class="sidebar">
       <p class="sidebar-overline">Workspace</p>
       <nav aria-label="Main navigation">
-        <a class="nav-link" href="#overview" aria-current="page"><span class="nav-number">01</span>Overview</a>
-        <a class="nav-link" href="#customers"><span class="nav-number">02</span>Customers</a>
-        <a class="nav-link" href="#contacts"><span class="nav-number">03</span>Contacts</a>
-        <a class="nav-link" href="#cases"><span class="nav-number">04</span>Cases</a>
-        <a class="nav-link" href="#sales"><span class="nav-number">05</span>Sales &amp; campaigns</a>
-        <a class="nav-link" href="#assistant"><span class="nav-number">06</span>AI assistant</a>
-        <a class="nav-link" href="#knowledge"><span class="nav-number">07</span>Knowledge</a>
-        <a class="nav-link" href="#tools"><span class="nav-number">08</span>Tool registry</a>
-        <a class="nav-link" href="#administration"><span class="nav-number">09</span>Administration</a>
+        <div class="nav-group"><p class="nav-group-label">Workspace</p>
+          <a class="nav-link" href="#overview" aria-current="page"><span class="nav-number">01</span>Overview</a>
+          <a class="nav-link" href="#customers"><span class="nav-number">02</span>Customers</a>
+          <a class="nav-link" href="#contacts"><span class="nav-number">03</span>Contacts</a>
+          <a class="nav-link" href="#cases"><span class="nav-number">04</span>Cases</a>
+          <a class="nav-link" href="#sales"><span class="nav-number">05</span>Sales &amp; campaigns</a>
+        </div>
+        <div class="nav-group"><p class="nav-group-label">Intelligence</p>
+          <a class="nav-link" href="#assistant"><span class="nav-number">06</span>AI assistant</a>
+          <a class="nav-link" href="#knowledge"><span class="nav-number">07</span>Knowledge</a>
+        </div>
+        <div class="nav-group"><p class="nav-group-label">Administration</p>
+          <a class="nav-link" href="#tools"><span class="nav-number">08</span>Tool registry</a>
+          <a class="nav-link" href="#administration"><span class="nav-number">09</span>Administration</a>
+        </div>
       </nav>
       <div class="sidebar-foot"><strong>SYNTHETIC WORKSPACE</strong><small>Records stay local to this application and reset when it restarts.</small></div>
     </aside>
     <main id="main-content" class="workspace-main">
     <section id="overview" aria-labelledby="dashboard-title">
-      <div class="dashboard-hero">
-        <div><p class="eyebrow">Relationship intelligence</p><h2 id="dashboard-title">Portfolio overview</h2><p id="dashboard-subtitle">A live view of customers, service demand, and recent activity.</p></div>
-        <span class="dashboard-date" id="dashboard-date">Current workspace</span>
+      <div class="ai-hero">
+        <div class="ai-hero-copy"><p class="eyebrow">Relationship intelligence</p><h2 id="dashboard-title">Make the next customer conversation clearer.</h2><p id="dashboard-subtitle">Ask RELASI to summarize context, understand a complaint, or find grounded guidance.</p></div>
+        <div class="ai-hero-signals"><span class="ai-signal">Local deterministic AI</span><span class="ai-signal" id="dashboard-date">Synthetic workspace</span></div>
       </div>
+      <section class="ai-start-card" aria-labelledby="ask-relasi-title">
+        <div class="ai-start-heading"><div><h3 id="ask-relasi-title">Ask RELASI</h3><p>Start with a question. Review the evidence before choosing what to do.</p></div><span class="badge">Advisory</span></div>
+        <div class="ai-input-grid">
+          <div><label for="overview-customer-context">Customer context</label><select id="overview-customer-context"><option value="">Loading customer scope…</option></select></div>
+          <div><label for="overview-assistant-question">What would you like to understand?</label><textarea id="overview-assistant-question" maxlength="2000" placeholder="Ask about a customer relationship, service issue, or banking procedure…"></textarea></div>
+          <button id="overview-ask-assistant" type="button">Ask RELASI</button>
+        </div>
+        <p class="ai-privacy-note">Answers use only authorized synthetic workspace data. Recommendations stay advisory; record changes require review.</p>
+        <p class="scenario-heading">Or try a guided scenario</p>
+        <div class="scenario-grid" aria-label="Guided AI demonstration scenarios">
+          <button class="scenario-button" type="button" data-prompt="Summarize this customer's relationship with the bank." data-requires-customer="true"><strong>Customer brief</strong><small>See products, cases, and recent contact together</small></button>
+          <button class="scenario-button" type="button" data-prompt="A transfer of IDR 5 million yesterday failed and the recipient has not received the money."><strong>Complaint triage</strong><small>Classify a payment issue and extract key details</small></button>
+          <button class="scenario-button" type="button" data-prompt="What is the procedure for handling an unsuccessful BI-FAST transaction?"><strong>Find guidance</strong><small>Get a cited answer from the local knowledge library</small></button>
+          <button class="scenario-button" type="button" data-prompt="What should I do next for this customer?" data-requires-customer="true"><strong>Plan a follow-up</strong><small>Review evidence-backed next actions</small></button>
+        </div>
+        <div id="overview-ai-result" class="ai-response-shell" aria-live="polite"></div>
+      </section>
       <div class="dashboard-grid" id="dashboard-metrics" aria-live="polite" aria-busy="true"><article class="metric-card"><span class="metric-label">Loading analytics…</span></article></div>
       <div class="dashboard-panels">
         <section class="dashboard-panel" aria-labelledby="case-chart-title"><div class="panel-heading"><div><h3 id="case-chart-title">Service case health</h3><p>Case volume by current status</p></div><span class="badge" id="case-total-badge">—</span></div><div class="chart-list" id="case-chart"></div></section>
@@ -329,11 +399,11 @@
       </div>
     </section>
     <section id="assistant" class="card" aria-labelledby="assistant-title">
-      <h2 id="assistant-title">AI assistant <span class="badge">Advisory workspace</span></h2>
+      <div class="section-hero"><div><h2 id="assistant-title">AI workbench</h2><p>Ask follow-up questions and inspect how the local assistant reached its answer.</p></div><span class="badge">Scope checked</span></div>
       <p class="muted" id="assistant-context">Select a customer to include authorized Customer 360 context. Policy and procedure questions use bundled synthetic sources.</p>
       <label for="assistant-question">Ask a question</label>
-      <textarea id="assistant-question" class="assistant-question" maxlength="2000" placeholder="Summarize this customer's relationship with the bank, or describe a customer inquiry…"></textarea>
-      <div class="form-actions"><button id="ask-assistant" type="button">Ask assistant</button></div>
+      <textarea id="assistant-question" class="assistant-question" maxlength="2000" placeholder="Ask a follow-up about customer context or local banking guidance…"></textarea>
+      <div class="form-actions"><button id="ask-assistant" type="button">Ask assistant</button><span class="muted">Local mock · no external model connection</span></div>
       <div id="assistant-result" aria-live="polite"></div>
     </section>
     <section id="knowledge" class="card" aria-labelledby="knowledge-title">
@@ -373,6 +443,9 @@
     const detail = document.querySelector('#customer-detail');
     const assistantQuestion = document.querySelector('#assistant-question');
     const assistantResult = document.querySelector('#assistant-result');
+    const overviewQuestion = document.querySelector('#overview-assistant-question');
+    const overviewResult = document.querySelector('#overview-ai-result');
+    const overviewCustomerContext = document.querySelector('#overview-customer-context');
     const toolSelect = document.querySelector('#tool-select');
     const toolForm = document.querySelector('#tool-form');
     const toolOutput = document.querySelector('#tool-output');
@@ -458,6 +531,7 @@
         ]);
         if (requestId !== dashboardRequest) return;
         const customers = customerData.customers;
+        populateOverviewCustomerContext(customers);
         const cases = caseData.cases;
         const interactions = interactionData.interactions;
         const customerNames = new Map(customers.map(customer => [customer.id, customer.fullName]));
@@ -1187,6 +1261,25 @@
       }
     }
 
+    function populateOverviewCustomerContext(customers) {
+      const priorSelection = customers.some(customer => customer.id === selectedCustomerId) ? selectedCustomerId : '';
+      overviewCustomerContext.replaceChildren(option('', 'No customer selected'));
+      for (const customer of customers) overviewCustomerContext.append(option(customer.id, `${customer.fullName} · ${customer.id}`));
+      const nextSelection = priorSelection || customers[0]?.id || '';
+      setSelectedCustomerContext(nextSelection);
+    }
+
+    function setSelectedCustomerContext(customerId) {
+      selectedCustomerId = customerId || '';
+      if (overviewCustomerContext) overviewCustomerContext.value = selectedCustomerId;
+      const selectedCustomer = [...(overviewCustomerContext?.options || [])].find(item => item.value === selectedCustomerId);
+      const contextMessage = selectedCustomerId
+        ? `Assistant context: ${selectedCustomer?.textContent || selectedCustomerId}. The server checks your scope again.`
+        : 'Select a customer to include authorized Customer 360 context. Policy and procedure questions use bundled synthetic sources.';
+      const contextNote = document.querySelector('#assistant-context');
+      if (contextNote) contextNote.textContent = contextMessage;
+    }
+
     function updateResetButton() {
       resetButton.disabled = !['CRM_SUPERVISOR', 'CRM_ADMINISTRATOR'].includes(demoRoles[userSelect.value]);
       resetButton.title = resetButton.disabled ? 'Available to supervisors and administrators' : 'Restore seeded cases and interactions';
@@ -1209,9 +1302,8 @@
       const requestId = ++customerSearchRequest;
       const identityId = userSelect.value;
       customerLoadRequest++;
-      selectedCustomerId = '';
+      setSelectedCustomerContext('');
       detail.hidden = true;
-      document.querySelector('#assistant-context').textContent = 'Select a customer to include authorized Customer 360 context. Policy and procedure questions use bundled synthetic sources.';
       customerList.replaceChildren(document.createTextNode('Loading customers…'));
       try {
         const query = encodeURIComponent(searchInput.value.trim());
@@ -1247,8 +1339,7 @@
       try {
         const data = await api(`/api/v1/customers/${encodeURIComponent(customerId)}`);
         if (identityId !== userSelect.value || requestId !== customerLoadRequest) return;
-        selectedCustomerId = customerId;
-        document.querySelector('#assistant-context').textContent = `Assistant context: ${data.customer.fullName} (${data.customer.id}) is selected. Access is checked again by the server.`;
+        setSelectedCustomerContext(customerId);
         document.querySelectorAll('.customer-option').forEach(button => {
           button.setAttribute('aria-current', String(button.dataset.customerId === customerId));
         });
@@ -1679,43 +1770,44 @@
       if (traceList) traceList.append(makeText('li', `MCP tool call · COMPLETED · ${toolName} returned ${response.status}.`));
     }
 
-    async function askAssistant() {
+    async function askAssistant(input = assistantQuestion, target = assistantResult, askButton = document.querySelector('#ask-assistant')) {
       const identityId = userSelect.value;
-      const message = assistantQuestion.value.trim();
+      const customerId = selectedCustomerId;
+      const message = input.value.trim();
       if (!message) {
-        assistantResult.replaceChildren(makeText('p', 'Enter a question first.', 'error'));
+        target.replaceChildren(makeText('p', 'Enter a question first.', 'error'));
         return;
       }
-      assistantResult.replaceChildren(makeText('p', 'Preparing response…', 'muted'));
-      const askButton = document.querySelector('#ask-assistant');
+      target.replaceChildren(makeText('p', 'RELASI is reviewing the authorized workspace context…', 'muted'));
       askButton.disabled = true;
       const values = { message };
-      if (selectedCustomerId) values.customerId = selectedCustomerId;
+      if (customerId) values.customerId = customerId;
       try {
         const response = await api('/api/v1/assistant/respond', { method: 'POST', body: new URLSearchParams(values) });
         if (identityId !== userSelect.value) return;
-        renderAssistantResponse(response);
+        renderAssistantResponse(response, target);
       } catch (error) {
         if (identityId !== userSelect.value) return;
-        assistantResult.replaceChildren(makeText('p', error.message, 'error'));
+        target.replaceChildren(makeText('p', error.message, 'error'));
       } finally {
         askButton.disabled = false;
       }
     }
 
-    function renderAssistantResponse(response) {
-      assistantResult.replaceChildren();
-      assistantResult.append(makeText('p', `Request: ${response.input}`, 'muted'));
-      assistantResult.append(makeText('span', response.abstained ? 'Abstained · no reliable source' : response.grounded ? 'Grounded in retrieved sources' : 'CRM/service mock response', 'badge'));
-      const answer = makeText('p', response.answer, 'assistant-answer');
-      assistantResult.append(answer);
+    function renderAssistantResponse(response, target = assistantResult) {
+      target.replaceChildren();
+      const responseCard = makeText('article', '', 'ai-response-card');
+      const meta = makeText('div', '', 'ai-response-meta');
+      meta.append(makeText('span', response.abstained ? 'Evidence not found' : response.grounded ? 'Source grounded' : 'CRM context response', 'badge'));
+      if (response.customerId) meta.append(makeText('span', `Customer context · ${response.customerId}`, 'analysis-pill'));
+      responseCard.append(meta, makeText('p', response.answer, 'ai-answer-copy'));
       if (response.caseAggregation) {
-        assistantResult.append(makeText('h3', `Unresolved payment complaints · ${response.totalCases} case(s)`));
+        responseCard.append(makeText('h3', `Unresolved payment complaints · ${response.totalCases} case(s)`));
         if (!response.caseAggregation.length) {
-          assistantResult.append(makeText('p', 'No matching cases were found in this identity’s authorized scope.', 'muted'));
+          responseCard.append(makeText('p', 'No matching cases were found in this identity’s authorized scope.', 'muted'));
         }
         for (const group of response.caseAggregation) {
-          const card = makeText('article', '', 'aggregate-case-card');
+          const caseCard = makeText('article', '', 'aggregate-case-card');
           const heading = document.createElement('header');
           heading.append(makeText('h4', `${group.customer.fullName} · ${group.customer.customerNumber}`));
           const view = makeText('button', 'Open profile');
@@ -1725,29 +1817,39 @@
             detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
           });
           heading.append(view);
-          card.append(heading);
+          caseCard.append(heading);
           const cases = document.createElement('ul');
           for (const serviceCase of group.cases) {
             cases.append(makeText('li', `${serviceCase.reference} · ${serviceCase.subject} · ${serviceCase.status.replaceAll('_', ' ')} · ${serviceCase.priority} priority`));
           }
-          card.append(cases);
-          assistantResult.append(card);
+          caseCard.append(cases);
+          responseCard.append(caseCard);
         }
       }
       if (response.sources.length) {
-        assistantResult.append(makeText('h3', 'Retrieved sources'));
-        const sources = document.createElement('ul');
+        responseCard.append(makeText('h3', 'Evidence used'));
+        const sources = makeText('div', '', 'ai-evidence-list');
         for (const source of response.sources) {
-          const entry = document.createElement('li');
+          const entry = makeText('article', '', 'ai-evidence-card');
           entry.append(makeText('strong', `${source.title} · ${source.section}`));
-          entry.append(makeText('div', `${source.reference} · ${source.source} · effective ${source.effectiveDate} · relevance ${(source.score * 100).toFixed(0)}%`, 'muted'));
+          entry.append(makeText('small', `${source.reference} · ${source.source} · effective ${source.effectiveDate}`));
           const excerpt = document.createElement('details');
-          excerpt.append(makeText('summary', 'View retrieved passage'));
+          excerpt.append(makeText('summary', `View supporting passage · ${(source.score * 100).toFixed(0)}% match`));
           excerpt.append(makeText('p', source.content, 'muted'));
           entry.append(excerpt);
           sources.append(entry);
         }
-        assistantResult.append(sources);
+        responseCard.append(sources);
+      }
+      if (response.customerId) {
+        const actions = makeText('div', '', 'ai-response-actions');
+        const openCustomer = makeText('button', 'Open customer profile'); openCustomer.type = 'button';
+        openCustomer.addEventListener('click', async () => {
+          await loadCustomer(response.customerId);
+          document.querySelector('#customers').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        actions.append(openCustomer);
+        responseCard.append(actions);
       }
       const analysis = makeText('div', '', 'analysis-pills');
       analysis.append(
@@ -1757,19 +1859,27 @@
         makeText('span', `Suggested case: ${response.nlp.suggestedCaseCategory.replaceAll('_', ' ')}`, 'analysis-pill'),
         makeText('span', `Priority: ${response.nlp.suggestedPriority}`, 'analysis-pill')
       );
-      assistantResult.append(analysis);
+      const diagnostics = document.createElement('details');
+      diagnostics.className = 'ai-trace-details';
+      diagnostics.append(makeText('summary', 'Intent analysis and extracted details'));
+      diagnostics.append(analysis);
       if (response.nlp.entities.length) {
-        assistantResult.append(makeText('h3', 'Extracted entities'));
+        diagnostics.append(makeText('h4', 'Extracted entities'));
         const entities = document.createElement('ul');
         for (const entity of response.nlp.entities) entities.append(makeText('li', `${entity.type.replaceAll('_', ' ')}: ${entity.value}`));
-        assistantResult.append(entities);
+        diagnostics.append(entities);
       }
-      assistantResult.append(makeText('h3', `Execution trace · ${response.provider} · ${response.durationMs} ms`));
+      responseCard.append(diagnostics);
+      const traceDetails = document.createElement('details');
+      traceDetails.className = 'ai-trace-details';
+      traceDetails.append(makeText('summary', `Technical execution trace · ${response.provider} · ${response.durationMs} ms`));
       const trace = document.createElement('ol');
       trace.className = 'trace-list';
       for (const step of response.trace) trace.append(makeText('li', `${step.stage.replaceAll('_', ' ')} · ${step.status} · ${step.durationMs} ms · ${step.detail}`));
-      assistantResult.append(trace);
-      if (response.toolInvocation) renderToolResult(response.toolInvocation, response.toolName, assistantResult, true);
+      traceDetails.append(trace);
+      responseCard.append(traceDetails);
+      target.append(responseCard);
+      if (response.toolInvocation) renderToolResult(response.toolInvocation, response.toolName, target, true);
     }
 
     function formatBalance(product) {
@@ -1867,6 +1977,18 @@
     document.querySelector('#case-queue-status').addEventListener('change', renderCaseQueue);
     document.querySelector('#case-queue-priority').addEventListener('change', renderCaseQueue);
     document.querySelector('#ask-assistant').addEventListener('click', askAssistant);
+    const overviewAskButton = document.querySelector('#overview-ask-assistant');
+    overviewAskButton.addEventListener('click', () => askAssistant(overviewQuestion, overviewResult, overviewAskButton));
+    overviewCustomerContext.addEventListener('change', () => setSelectedCustomerContext(overviewCustomerContext.value));
+    document.querySelectorAll('.scenario-button').forEach(button => button.addEventListener('click', () => {
+      if (button.dataset.requiresCustomer === 'true' && !selectedCustomerId) {
+        overviewResult.replaceChildren(makeText('p', 'Choose a customer context first, then try this scenario.', 'muted'));
+        overviewCustomerContext.focus();
+        return;
+      }
+      overviewQuestion.value = button.dataset.prompt;
+      askAssistant(overviewQuestion, overviewResult, overviewAskButton);
+    }));
     toolSelect.addEventListener('change', renderToolDefinition);
     document.querySelector('#refresh-tools').addEventListener('click', () => loadTools().catch(error => {
       toolOutput.replaceChildren(makeText('p', error.message, 'error'));
